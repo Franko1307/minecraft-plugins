@@ -13,7 +13,7 @@ public class HelloCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        sender.sendMessage(ChatColor.RED + " Gurrola PUTO " + sender.getName());
+        sender.sendMessage(ChatColor.RED + " Hello " + sender.getName());
         return true;
     }
 }

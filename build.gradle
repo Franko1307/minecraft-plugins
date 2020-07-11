@@ -55,7 +55,10 @@ sourceCompatibility = 1.8
 
 
 dependencies {
-    compile "org.spigotmc:spigot-api:1.16.1-R0.1-SNAPSHOT", {
+    compile "org.spigotmc:spigot-api:1.9-R0.1-SNAPSHOT", {
+        ext { fatJarExclude = true }
+    }
+    compile ':spigot:1.9', {
         ext { fatJarExclude = true }
     }
 
