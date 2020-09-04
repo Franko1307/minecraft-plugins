@@ -1,0 +1,36 @@
+name: FKBAmongUs
+main: io.github.FKB.FKBAmongUs.Main
+version: 1.0
+commands:
+   hi:
+      description: This is a demo command.
+      usage: /hi
+      permission: RandomEffects.hi
+      permission-message: You don't have <permission>
+   FKBAmongUs:
+      description: This is a handler command for the event.
+      usage: /FKBAmongUs <join>
+      permission: FKBAmongUs.join
+      permission-message: You don't have <permission>
+      
+permissions:
+    FKBAmongUs.*:
+        description: gives help to use FKBAmongUs.
+        default: op
+        children:
+        FKBAmongUs.join: true
+        FKBAmongUs.list: true
+        FKBAmongUs.start: false
+        FKBAmongUs.stop: false
+    FKBAmongUs.join:
+        description: join a match.
+        default: true
+    FKBAmongUs.list:
+        description: Show list of players in game.
+        default: true
+    FKBAmongUs.start:
+        description: start the game.
+        default: false
+    FKBAmongUs.stop:
+        description: stop the game.
+        default: false
