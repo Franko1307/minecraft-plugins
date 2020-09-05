@@ -4,10 +4,14 @@ import java.util.Vector;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.metadata.MetadataValue;
 
 
 public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecutor {
@@ -30,13 +34,16 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		if (args.length < 1) {
+		if (args.length == 0) {
             sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "Not enough arguments!");
             return false;
         }
 		switch (args[0].toLowerCase()) {
 		case "join":
 			playerJoin(sender);
+			break;
+		case "leave":
+			playerLeave(sender);
 			break;
 		case "list":
 			printPlayers();
@@ -50,6 +57,9 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		case "stop":
 			stopGame();
 			break;
+		case "setlobby":
+			setLobby(sender);
+			break;
 		default:
 			sender.sendMessage("Error in comand!.");
 			return false;
@@ -61,12 +71,44 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	private void playerJoin(CommandSender sender) {
 		Player player = (Player) sender;
 		if(!this.plugin.players.contains(player)) {
-			plugin.players.addElement(player);
-			plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.YELLOW + player.getName() + ChatColor.AQUA + " joined (" + this.plugin.players.size() + ").");
+			try {
+				player.saveData();
+				String w = plugin.getConfig().get("map.world.name").toString();
+				double x = (double) plugin.getConfig().get("map.world.lobby.x");
+				double y = (double) plugin.getConfig().get("map.world.lobby.y");
+				double z = (double) plugin.getConfig().get("map.world.lobby.z");
+				double d = (double) plugin.getConfig().get("map.world.lobby.d");
+				plugin.getLogger().info("w = " + w + ", x = " + x + ", y = " + y + ", z = " + z);
+				Location loc = new Location(plugin.getServer().getWorld(w), x, y, z);
+				loc.setYaw((float)d);
+				player.teleport(loc);
+				
+				plugin.players.addElement(player); 
+				plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.YELLOW + player.getName() + ChatColor.AQUA + " joined (" + this.plugin.players.size() + ").");
+				
+			}catch(Exception e) {
+				sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "There is no lobby to join, contact an admin.");
+				plugin.getLogger().info("There is no lobby to join FKB Among Us. Configure a lobby please. " + e.getStackTrace());
+			}	
 		}else {
 			sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "You are already in the game!.");
 		}
 	}
+	
+	private void playerLeave(CommandSender sender) {
+		Player _player = (Player)sender;
+		if(this.plugin.players.contains(_player)) {
+			_player.loadData();
+			plugin.players.remove(_player);
+			
+			//Location loc = new Location(_player.getMetadata("lastLocation").get(0));
+			//_player.teleport((Location) _player.getMetadata("lastLocation"));
+			plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.YELLOW + _player.getName() + ChatColor.AQUA + " left (" + this.plugin.players.size() + ").");
+		}else {
+			sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "You are not in a game.");
+		}
+	}
+	
 	public void printPlayers() {
 		if(plugin.players.size() > 0) {
 		plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.GREEN + "Players:");
@@ -89,13 +131,11 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 
 		plugin.getLogger().info("[" + plugin.innocents.size() + "] innocents:");
 		for(int i=0; i < plugin.innocents.size(); i++) {	
-			plugin.getLogger().info(plugin.innocents.get(i).getName());
 			plugin.innocents.get(i).sendTitle(ChatColor.BLUE + "Innocent", ChatColor.GRAY + "There are " + ChatColor.RED + plugin.impostors.size() + " Impostor(s) " + ChatColor.GRAY + " among us", 5, 100, 5);
 		}
 		
 		plugin.getLogger().info("[" + plugin.impostors.size() + "] impostors:");
 		for(int i=0; i < plugin.impostors.size(); i++) {
-			plugin.getLogger().info(plugin.impostors.get(i).getName());
 			plugin.impostors.get(i).sendTitle(ChatColor.DARK_RED + "Impostor", ChatColor.GRAY + "Kill them!", 5, 100, 5);
 		}
 		
@@ -113,7 +153,23 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		}
 	}
 	
-	
+	private void setLobby(CommandSender sender) {
+		Player _player = (Player)sender;
+		double x = _player.getLocation().getX();
+		double y = _player.getLocation().getY();
+		double z = _player.getLocation().getZ();
+		String w = _player.getWorld().getName();
+		double d = (double) _player.getLocation().getYaw();
+		
+		plugin.getConfig().set("map.world.name", w);
+		plugin.getConfig().set("map.world.lobby.x", x);
+		plugin.getConfig().set("map.world.lobby.y", y);
+		plugin.getConfig().set("map.world.lobby.z", z);
+		plugin.getConfig().set("map.world.lobby.d", d);
+		
+        plugin.saveConfig();
+        sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN + "Established lobby in world: " + w + "(" + x + ", " + y +", " + z + ").");
+	}
 	
 	
 }

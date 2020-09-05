@@ -21,7 +21,7 @@ import java.util.Vector;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Main extends JavaPlugin{
-	public String pluginName = ChatColor.DARK_PURPLE + "[" + ChatColor.DARK_RED + "" + ChatColor.BOLD  + "F" + ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "K" + ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "B" + ChatColor.AQUA + ChatColor.BOLD  + "AmongUs] ";
+	public String pluginName = ChatColor.AQUA + "[" + ChatColor.DARK_RED + "" + ChatColor.BOLD  + "F" + ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "K" + ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "B" + ChatColor.AQUA + ChatColor.BOLD  + "AmongUs" + ChatColor.AQUA  + "] ";
 	public boolean running = false;
 	public int count = 0; //segundos
 	public Vector<Player> players = new Vector<Player>(); 
@@ -31,6 +31,7 @@ public class Main extends JavaPlugin{
 	
 	 @Override
 	    public void onEnable() {
+		 saveDefaultConfig();
 		 getLogger().info("onEnable has been invoked!");
 		 //for (Player player : Bukkit.getServer().getOnlinePlayers()) {
 		//	    playerList.put(player.getName(), playerData(player));

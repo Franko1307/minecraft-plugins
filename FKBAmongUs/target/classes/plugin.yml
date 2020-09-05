@@ -19,11 +19,16 @@ permissions:
         default: op
         children:
         FKBAmongUs.join: true
+        FKBAmongUs.leave: true
         FKBAmongUs.list: true
         FKBAmongUs.start: false
         FKBAmongUs.stop: false
+        FKBAmongUs.setLobby: false
     FKBAmongUs.join:
         description: join a match.
+        default: true
+    FKBAmongUs.leave:
+        description: leave for the match.
         default: true
     FKBAmongUs.list:
         description: Show list of players in game.
@@ -34,3 +39,7 @@ permissions:
     FKBAmongUs.stop:
         description: stop the game.
         default: false
+    FKBAmongUs.setLobby:
+        description: Set the lobby of the game.
+        default: false
+        
