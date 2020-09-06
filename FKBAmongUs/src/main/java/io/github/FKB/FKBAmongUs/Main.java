@@ -24,10 +24,9 @@ public class Main extends JavaPlugin{
 	public String pluginName = ChatColor.AQUA + "[" + ChatColor.DARK_RED + "" + ChatColor.BOLD  + "F" + ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "K" + ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "B" + ChatColor.AQUA + ChatColor.BOLD  + "AmongUs" + ChatColor.AQUA  + "] ";
 	public boolean running = false;
 	public int count = 0; //segundos
-	public Vector<Player> players = new Vector<Player>(); 
-	public Vector<Player> impostors = new Vector<Player>(); 
-	public Vector<Player> innocents = new Vector<Player>(); 
+
 	public HandlerCommand handlerCommand = new HandlerCommand(this);
+	public Vector<FKBAmongUsPlayer> players2 = new Vector<FKBAmongUsPlayer>();
 	
 	 @Override
 	    public void onEnable() {
