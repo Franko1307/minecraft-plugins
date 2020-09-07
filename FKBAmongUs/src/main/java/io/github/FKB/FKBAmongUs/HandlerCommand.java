@@ -17,14 +17,16 @@ import io.github.FKB.FKBAmongUs.FKBAmongUsPlayer.PlayerRole;
 
 
 public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecutor {
+	private final Game game;
 	private final Main plugin;
 	private boolean running = false;
 
 	//private Vector<Player> players = new Vector<Player>(); 
 	//private int counter;
 	
-	public HandlerCommand(Main plugin) {
-		this.plugin = plugin; // Store the plugin in situations where you need it.
+	public HandlerCommand(Game _game, Main _plugin) {
+		this.game = _game; // Store the plugin in situations where you need it.
+		this.plugin = _plugin;
 		//this.counter = 100;
 	}
 
@@ -37,7 +39,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		if (args.length == 0) {
-            sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "Not enough arguments!");
+            sender.sendMessage(this.game.pluginName + ChatColor.RED + "Not enough arguments!");
             return false;
         }
 		switch (args[0].toLowerCase()) {
@@ -88,8 +90,8 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 				player.getPlayer().saveData(); //Guarda los datos del jugador que quiere ingresar a partida, esto se usa para que al terminar la partida se regrese al lugar donde estaba
 				int maxPlayers = plugin.getConfig().getInt("MaxPlayers") != 0 ? plugin.getConfig().getInt("MaxPlayers") : 10; //Se obtiene numero máximo de jugadores, si no existe, se pone 10 por default
 				
-				if(plugin.players2.size() > maxPlayers) { //Si la partida está llena, no meter al jugador.
-					sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "The match is full.");
+				if(game.players.size() > maxPlayers) { //Si la partida está llena, no meter al jugador.
+					sender.sendMessage(this.game.pluginName + ChatColor.RED + "The match is full.");
 					return;
 				}
 				//Se obtiene el mundo y las coordenadas del lobby
@@ -103,15 +105,15 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 				loc.setYaw((float)d); //Se pone la dirección de mirada al jugador.
 				
 				player.getPlayer().teleport(loc); //teletransporta jugador al lobby
-				plugin.players2.addElement(player);  //Se ingresa al arreglo de jugadores.
-				plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.YELLOW + player.getPlayer().getName() + ChatColor.AQUA + " joined (" + this.plugin.players2.size() + "/"+ maxPlayers + ").");
+				game.players.addElement(player);  //Se ingresa al arreglo de jugadores.
+				plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.YELLOW + player.getPlayer().getName() + ChatColor.AQUA + " joined (" + this.game.players.size() + "/"+ maxPlayers + ").");
 				
 			}catch(Exception e) {
-				sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "There is no lobby to join, contact an admin.");
+				sender.sendMessage(this.game.pluginName + ChatColor.RED + "There is no lobby to join, contact an admin.");
 				plugin.getLogger().info("There is no lobby to join FKB Among Us. Configure a lobby please. " + e.getStackTrace());
 			}	
 		}else {
-			sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "You are already in the game!.");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "You are already in the game!.");
 		}
 	}
 	
@@ -124,22 +126,22 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		FKBAmongUsPlayer _player = new FKBAmongUsPlayer((Player)sender);
 		int aux = isPlayerIn(_player);
 		if(aux != -1) { //Si el jugador está en partida no iniciada:
-			plugin.players2.get(aux).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
-			plugin.players2.remove(aux); //Quita al jugador del arreglo de jugadores.
-			plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.YELLOW + _player.getPlayer().getName() + ChatColor.AQUA + " left (" + this.plugin.players2.size() + "/" + maxPlayers + ")."); //informa que se fue un jugador
+			game.players.get(aux).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
+			game.players.remove(aux); //Quita al jugador del arreglo de jugadores.
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.YELLOW + _player.getPlayer().getName() + ChatColor.AQUA + " left (" + this.game.players.size() + "/" + maxPlayers + ")."); //informa que se fue un jugador
 		}else {
-			sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "You are not in a game.");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "You are not in a game.");
 		}
 	}
 	
 	public void printPlayers() {
-		if(plugin.players2.size() > 0) {
-		plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.GREEN + "Players:");
-		for(int i=0; i < plugin.players2.size();i++) {
-			plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.GREEN + plugin.players2.elementAt(i).getPlayer().getName());
+		if(game.players.size() > 0) {
+		plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.GREEN + "Players:");
+		for(int i=0; i < game.players.size();i++) {
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.GREEN + game.players.elementAt(i).getPlayer().getName());
 		}
 		}else {
-			plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.GREEN + "No players in game.");
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.GREEN + "No players in game.");
 		}
 	}
 	
@@ -151,8 +153,8 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		int minPlayers = plugin.getConfig().getInt("MinPlayers") != 0 ? plugin.getConfig().getInt("MinPlayers") : 4; //Se obtiene numero minimo de jugadores, si no existe, se pone 4 por default
 		int numImpostors = plugin.getConfig().getInt("NumberOfImpostor") != 0 ? plugin.getConfig().getInt("NumberOfImpostor") : 1; //Se obtiene numero de impostores, si no existe, se pone 1 por default
 		
-		if(plugin.players2.size() < minPlayers) { //No empieza si no hay minimo de jugadores
-			plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.RED + "Not enough players for start the game. Are needed at least " + minPlayers + " players.");
+		if(game.players.size() < minPlayers) { //No empieza si no hay minimo de jugadores
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "Not enough players for start the game. Are needed at least " + minPlayers + " players.");
 			return;
 		}
 		
@@ -160,17 +162,17 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		int i = 0;
 		while(i < numImpostors) { //elegir n veces impostor
 			//FKBAmongUsPlayer impostor = plugin.players2.elementAt(ThreadLocalRandom.current().nextInt(plugin.players2.size())); 
-			int random = ThreadLocalRandom.current().nextInt(plugin.players2.size());
-			if(plugin.players2.elementAt(random).getRole() != PlayerRole.IMPOSTOR) {
-				plugin.players2.elementAt(ThreadLocalRandom.current().nextInt(plugin.players2.size())).setRole(PlayerRole.IMPOSTOR); //Se obtiene un impostor del arreglo de jugadores al azar
+			int random = ThreadLocalRandom.current().nextInt(game.players.size());
+			if(game.players.elementAt(random).getRole() != PlayerRole.IMPOSTOR) {
+				game.players.elementAt(ThreadLocalRandom.current().nextInt(game.players.size())).setRole(PlayerRole.IMPOSTOR); //Se obtiene un impostor del arreglo de jugadores al azar
 				i++;
 			}
 			//plugin.innocents.remove(impostor); //Se elimina del arreglo de inocentes
 		}
 		
 		//Se informa a los jugadores el rol que tienen
-		for(i=0; i < plugin.players2.size(); i++) {	
-			FKBAmongUsPlayer p = plugin.players2.get(i);
+		for(i=0; i < game.players.size(); i++) {	
+			FKBAmongUsPlayer p = game.players.get(i);
 			if(p.getRole() == PlayerRole.INNOCENT)
 				p.getPlayer().sendTitle(ChatColor.BLUE + "Innocent", ChatColor.GRAY + "There are " + ChatColor.RED + numImpostors + " Impostor(s) " + ChatColor.GRAY + " among us", 5, 100, 5);
 			else
@@ -182,14 +184,14 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		
 		
 		running = true;
-		plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.GREEN + "has started.");
+		plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.GREEN + "has started.");
 	}
 	
 	private void stopGame() {
 		if(running != false) {
 			running = false;
-			this.plugin.players2.removeAllElements();
-			plugin.getServer().broadcastMessage(this.plugin.pluginName + ChatColor.RED + "has stopped.");
+			this.game.players.removeAllElements();
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "has stopped.");
 		}
 	}
 	
@@ -212,10 +214,10 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			plugin.getConfig().set("map.world.lobby.d", d);
 			
 	        plugin.saveConfig();
-	        sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN + "Established lobby in world: " + w + "(" + x + ", " + y +", " + z + ").");
+	        sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Established lobby in world: " + w + "(" + x + ", " + y +", " + z + ").");
 	        return true;
 		}catch(Exception e) {
-			sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN  + "Could not establish lobby");
+			sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish lobby");
 			return false;
 		}
 	}
@@ -228,13 +230,13 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			try {
 				plugin.getConfig().set("MaxPlayers", i);
 				plugin.saveConfig();
-				sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN + "Maximum number of players set (" + i + ")");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Maximum number of players set (" + i + ")");
 			}catch(Exception e) {
-				sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN  + "Could not establish maximun number of players");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish maximun number of players");
 				return false;
 			}
 		}else {
-			sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "Maximum number of players must be at least 4");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "Maximum number of players must be at least 4");
 			return false;
 		}
 		return true;
@@ -249,13 +251,13 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			try {
 				plugin.getConfig().set("MinPlayers", i);
 				plugin.saveConfig();
-				sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN + "Minimum number of players set (" + i + ")");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Minimum number of players set (" + i + ")");
 			}catch(Exception e) {
-				sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN  + "Could not establish Minimum number of players");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish Minimum number of players");
 				return false;
 			}
 		}else {
-			sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "Minimum number of players must be at least 4");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "Minimum number of players must be at least 4");
 			return false;
 		}
 		return true;
@@ -270,13 +272,13 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			try {
 				plugin.getConfig().set("NumberOfImpostor", i);
 				plugin.saveConfig();
-				sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN + "Number of impostors established (" + i + ")");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Number of impostors established (" + i + ")");
 			}catch(Exception e) {
-				sender.sendMessage(this.plugin.pluginName + ChatColor.GREEN  + "Could not establish number of impostors");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish number of impostors");
 				return false;
 			}
 		}else {
-			sender.sendMessage(this.plugin.pluginName + ChatColor.RED + "Number of impostors can only be 1, 2 or 3.");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "Number of impostors can only be 1, 2 or 3.");
 			return false;
 		}
 		
@@ -290,8 +292,8 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	 * 
 	 *============================================================================================================= */
 	private int isPlayerIn(FKBAmongUsPlayer _player) {
-		for(int i = 0; i < plugin.players2.size(); i++) {
-			if(plugin.players2.get(i).getPlayer().getName() == _player.getPlayer().getName()) {
+		for(int i = 0; i < game.players.size(); i++) {
+			if(game.players.get(i).getPlayer().getName() == _player.getPlayer().getName()) {
 				return i;
 			}
 		}
