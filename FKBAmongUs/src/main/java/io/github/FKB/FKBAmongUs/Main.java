@@ -9,15 +9,17 @@ public class Main extends JavaPlugin{
 	//public boolean running = false;
 	
 	 @Override
-	    public void onEnable() {
-		 getLogger().info("onEnable has been invoked!");
-		 saveDefaultConfig();
-		 game = new Game(this);
-	    }
-	    
-	    @Override
-	    public void onDisable() {
-	    	getLogger().info("onDisable has been invoked!");
-	    }
+    public void onEnable() {
+	 getLogger().info("onEnable has been invoked!");
+	 saveDefaultConfig();
+	 game = new Game(this);
+    }
+    
+    @Override
+    public void onDisable() {
+    	getLogger().info("onDisable has been invoked!");
+    }
+    
+    
 	    
 }

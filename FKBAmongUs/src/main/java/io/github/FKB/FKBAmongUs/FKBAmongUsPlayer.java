@@ -55,4 +55,12 @@ public class FKBAmongUsPlayer{
 	public boolean isImpostor() {
 		return this.role == PlayerRole.IMPOSTOR;
 	}
+	
+	public void setAlive(boolean _alive) {
+		this.alive = _alive;
+	}
+	
+	public boolean isAlive() {
+		return this.alive;
+	}
 }

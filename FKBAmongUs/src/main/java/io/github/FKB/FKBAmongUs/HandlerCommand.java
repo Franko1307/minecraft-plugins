@@ -5,11 +5,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import io.github.FKB.FKBAmongUs.FKBAmongUsPlayer.PlayerRole;
 import io.github.FKB.FKBAmongUs.Game.Status;
@@ -143,6 +146,10 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	 * Empieza el juego, seleccionando impostores y los tepea al spawn del mapa. 
 	 */
 	private void startGame() {
+		ItemStack sword = new ItemStack(Material.IRON_SWORD);
+		ItemMeta swordIM = sword.getItemMeta();		
+		swordIM.setUnbreakable(true);
+		
 		if(game.status != Status.WAITING) return;
 		int minPlayers = plugin.getConfig().getInt("MinPlayers") != 0 ? plugin.getConfig().getInt("MinPlayers") : 4; //Se obtiene numero minimo de jugadores, si no existe, se pone 4 por default
 		int numImpostors = plugin.getConfig().getInt("NumberOfImpostor") != 0 ? plugin.getConfig().getInt("NumberOfImpostor") : 1; //Se obtiene numero de impostores, si no existe, se pone 1 por default
@@ -170,17 +177,17 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 				FKBAmongUsPlayer p = game.players.get(i);
 				p.getPlayer().setGameMode(GameMode.SURVIVAL);
 				if(p.getRole() == PlayerRole.INNOCENT) {
+					game.innocents.add(p);
 					p.getPlayer().sendTitle(ChatColor.BLUE + "Innocent", ChatColor.GRAY + "There are " + ChatColor.RED + numImpostors + " Impostor(s) " + ChatColor.GRAY + " among us", 5, 100, 5);
 				}else {
+					p.getPlayer().getInventory().setItem(1, sword);
+					game.impostors.add(p);
 					p.getPlayer().sendTitle(ChatColor.DARK_RED + "Impostor", ChatColor.GRAY + "Kill them!", 5, 100, 5);
 				}
 				//Se obtiene el mundo y las coordenadas del lobby
 				Location loc = plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location");
 				p.getPlayer().teleport(loc);
 			}
-	
-			//TEPEAR AL SPAWN DEL MAPA A LOS JUGADORES.
-			
 			
 			game.status = Status.IN_GAME;
 			
@@ -197,10 +204,9 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			for(int i=0; i < this.game.players.size(); i++) {
 				this.game.players.get(i).getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
 				this.game.players.get(i).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
-				//this.game.players.remove(i); //Lo saca de la partida
+			
 			}
 			this.game.players.removeAllElements();
-			//this.game.players.removeAllElements();
 			this.game.timeInGame = 0;
 			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "has stopped.");
 		}

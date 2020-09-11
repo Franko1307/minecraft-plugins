@@ -6,34 +6,47 @@ import java.util.Vector;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitScheduler;
 
-
-public class Game {
+public class Game  implements Listener {
 	public enum Status{WAITING, IN_GAME, TALKING, VOTING;}
 	public String pluginName = ChatColor.AQUA + "[" + ChatColor.DARK_RED + "" + ChatColor.BOLD  + "F" + ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "K" + ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "B" + ChatColor.AQUA + ChatColor.BOLD  + "AmongUs" + ChatColor.AQUA  + "] ";
 	
 	private Main plugin;
 	public boolean running;
 	public Vector<FKBAmongUsPlayer> players;
+	public Vector<FKBAmongUsPlayer> impostors;
+	public Vector<FKBAmongUsPlayer> innocents;
 	public int timeInGame; //segundos
 	public Status status;
 	public HandlerCommand handlerCommand;
+	public ItemStack impostorItem = new ItemStack(Material.IRON_SWORD);
 	
 	
-	public Game(Main _plugin) {
+	public Game(Main _plugin){
 		this.plugin = _plugin; // Store the plugin in situations where you need it.
 		this.timeInGame = 0;
 		this.players = new Vector<FKBAmongUsPlayer>();
+		this.impostors = new Vector<FKBAmongUsPlayer>();
+		this.innocents = new Vector<FKBAmongUsPlayer>();
 		this.running = false;
 		this.status = Status.WAITING;
 		this.handlerCommand = new HandlerCommand(this, this.plugin);
+		
+		this.plugin.getServer().getPluginManager().registerEvents(this, this.plugin);
 		
 		for (Player player : _plugin.getServer().getOnlinePlayers()) {
 			player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
@@ -56,8 +69,7 @@ public class Game {
 	            		waiting();
 	            		break;
 	            	case IN_GAME:
-	            		inGame();
-	            		
+	            		inGame();    		
 	            		break;
 	            	case TALKING:
 	            		break;
@@ -84,7 +96,7 @@ public class Game {
 		
 		//verifica el cuarto donde se encuentran los jugadores
 		checkPlayersLocations();
-		checkNearbyPlayers();
+		//checkNearbyPlayers();
 	}
 	
 	private void checkPlayersLocations() {
@@ -103,29 +115,27 @@ public class Game {
 		timeInGame++;
 	}
 	
-	private void checkNearbyPlayers() {
-		ItemStack sword = new ItemStack(Material.IRON_SWORD);
+	/*private void checkNearbyPlayers() {
 		
-		for(int i=0; i < players.size(); i++) {
+		
+		for(int i=0; i < impostors.size(); i++) {
 			FKBAmongUsPlayer p1 = players.get(i);
-			if(p1.isImpostor()) {
-				for(int j=0; j < players.size(); j++) {
-					FKBAmongUsPlayer p2 = players.get(j);
-					if(!p1.getPlayer().equals(p2.getPlayer())) {
-						if(p1.getPlayer().getLocation().distance(p2.getPlayer().getLocation()) <= 4) {
-						    ItemStack item1 = p1.getPlayer().getInventory().getItemInMainHand();
-						    if(!item1.equals(sword)){
-						    	p1.getPlayer().getInventory().setItem(1, sword);
-						    }
-							//plugin.getServer().broadcastMessage(ChatColor.GREEN  + "jugador " + p2.getPlayer().getName() + " cerca de " + p1.getPlayer().getName());
-						}else {
-							p1.getPlayer().getInventory().setItem(1, new ItemStack(Material.AIR));
-						}
+			for(int j=0; j < innocents.size(); j++) {
+				FKBAmongUsPlayer p2 = players.get(j);
+				if(!p1.getPlayer().equals(p2.getPlayer())) {
+					if(p1.getPlayer().getLocation().distance(p2.getPlayer().getLocation()) <= 4) {
+					    ItemStack item1 = p1.getPlayer().getInventory().getItemInMainHand();
+					    if(!item1.equals(this.impostorItem)){
+					    	p1.getPlayer().getInventory().setItem(1, this.impostorItem);
+					    }
+						//plugin.getServer().broadcast-Message(ChatColor.GREEN  + "jugador " + p2.getPlayer().getName() + " cerca de " + p1.getPlayer().getName());
+					}else {
+						p1.getPlayer().getInventory().setItem(1, new ItemStack(Material.AIR));
 					}
 				}
 			}
 		}
-	}
+	}*/
 	
 	
     public String getRoom(Player player){
@@ -156,6 +166,51 @@ public class Game {
     return "";   
     }
     
+    public FKBAmongUsPlayer getFKBAmongUsPlayer(Player p) {
+    	for(int i=0; i < players.size(); i++) {
+    		if(players.get(i).getPlayer().equals(p)) {
+    			return players.get(i);
+    		}
+    	}
+    	return null;
+    }
+    
+    @EventHandler
+    public void OnDrop(PlayerDropItemEvent event) {
+    	event.setCancelled(true);
+    }
+    @EventHandler
+    public void OnDrag(InventoryDragEvent event) {
+    	event.setCancelled(true);
+    }
+    @EventHandler
+    public void OnInventoryClickEvent(InventoryClickEvent event) {
+    	event.setCancelled(true);
+    }
+    @EventHandler
+    public void OnPvp(EntityDamageByEntityEvent event) {
+    	boolean isImpostor = false;
+    	boolean isInnocent = true;
+    	if(!(event.getEntity() instanceof Player)) return;
+    	Player p1 = (Player) event.getEntity();
+    	Player p2 = (Player) event.getDamager();
 
-
+    	for(int i=0; i < impostors.size(); i++) {
+    		if(impostors.get(i).getPlayer().equals(p1)) {
+    			isImpostor = true;
+    		}
+    		if(impostors.get(i).getPlayer().equals(p2)) {
+    			isInnocent = false;
+    		}
+    	}
+    	if(!isImpostor) return;
+    	if(!isInnocent) return;
+    	
+    	if(p1.getInventory().getItemInMainHand() == impostorItem) {
+    		p2.setGameMode(GameMode.SPECTATOR);
+    		FKBAmongUsPlayer pAux = getFKBAmongUsPlayer(p2);
+    		pAux.setAlive(false);
+    	}
+    	
+    }
 }
