@@ -24,6 +24,8 @@ permissions:
         FKBAmongUs.start: false
         FKBAmongUs.stop: false
         FKBAmongUs.setLobby: false
+        FKBAmongUs.setmaxplayers: false
+        FKBAmongUs.setminplayers: false
         FKBAmongUs.setnumberimpostors: false
     FKBAmongUs.join:
         description: join a match.
@@ -42,6 +44,12 @@ permissions:
         default: false
     FKBAmongUs.setLobby:
         description: Set the lobby of the game.
+        default: false
+    FKBAmongUs.setmaxplayers:
+        description: Set number maximum players
+        default: false
+    FKBAmongUs.setminplayers:
+        description: Set number minimum players
         default: false
     FKBAmongUs.setnumberimpostors:
         description: Set number of impostors

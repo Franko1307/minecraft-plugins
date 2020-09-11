@@ -1,0 +1,19 @@
+name: FKBRandomEffects
+main: io.github.JoseGurrola.FKBRandomEffects.Main
+version: 1.0
+commands:
+   hi:
+      description: This is a demo command.
+      usage: /hi
+      permission: RandomEffects.hi
+      permission-message: You don't have <permission>
+   randomeffects:
+      description: This is a handler command for the event.
+      usage: /randomeffects <start/stop> <time> <duration>
+      permission: RandomEffects.randomeffects
+      permission-message: You don't have <permission>
+      
+permissions:
+    FKBRandomEffects.*:
+        description: say hi
+        default: op
