@@ -1,11 +1,12 @@
 name: FKBAmongUs
 main: io.github.FKB.FKBAmongUs.Main
 version: 1.0
+api-version: 1.13
 commands:
    hi:
       description: This is a demo command.
       usage: /hi
-      permission: RandomEffects.hi
+      permission: FKBAmongUs.hi
       permission-message: You don't have <permission>
    FKBAmongUs:
       description: This is a handler command for the event.
@@ -27,6 +28,8 @@ permissions:
         FKBAmongUs.setmaxplayers: false
         FKBAmongUs.setminplayers: false
         FKBAmongUs.setnumberimpostors: false
+        FKBAmongUs.setmeetingtime: false
+        FKBAmongUs.setvotingtime: false
     FKBAmongUs.join:
         description: join a match.
         default: true
@@ -53,5 +56,11 @@ permissions:
         default: false
     FKBAmongUs.setnumberimpostors:
         description: Set number of impostors
+        default: false
+    FKBAmongUs.setmeetingtime:
+        description: Set time to talk
+        default: false
+    FKBAmongUs.setvotingtime:
+        description: Set time to vote
         default: false
         

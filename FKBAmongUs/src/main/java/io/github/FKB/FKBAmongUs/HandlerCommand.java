@@ -7,9 +7,11 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -66,12 +68,23 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			if(args.length < 2) return false;	
 			setNumberImpostors(sender, Integer.parseInt(args[1]));
 			break;
+		case "setmeetingtime":
+			if(args.length < 2) return false;	
+			setMeetingTime(sender, Integer.parseInt(args[1]));
+			break;
+		case "setvotingtime":
+			if(args.length < 2) return false;	
+			setVotingTime(sender, Integer.parseInt(args[1]));
+			break;
 		case "setlobby":
 			setLobby(sender);
 			break;
 		case "setmapcoords":
 			if(args.length < 3) return false;
 			setMapCoords(sender, args[1], Integer.parseInt(args[2]));
+			break;
+		case "getplayers":
+			printPlayers(sender);
 			break;
 		default:
 			sender.sendMessage("Error in comand!.");
@@ -96,7 +109,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 				}
 				//Se obtiene el mundo y las coordenadas del lobby
 				Location loc = plugin.getConfig().getLocation("map.world.lobby.location");
-				
+				player.getPlayer().setHealth(20);
 				player.setRole(FKBAmongUsPlayer.PlayerRole.INNOCENT);
 				game.players.addElement(player);  //Se ingresa al arreglo de jugadores.
 				player.getPlayer().teleport(loc); //teletransporta jugador al lobby
@@ -120,7 +133,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		FKBAmongUsPlayer _player = new FKBAmongUsPlayer(this.plugin, (Player)sender);
 		int aux = isPlayerIn(_player);
 		if(aux != -1) { //Si el jugador está en partida no iniciada:
-			game.players.get(aux).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
+			game.getFKBAmongUsPlayer(game.players.get(aux).getPlayer()).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
 			
 			_player.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
 			game.players.remove(aux); //Quita al jugador del arreglo de jugadores.
@@ -145,11 +158,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	/*
 	 * Empieza el juego, seleccionando impostores y los tepea al spawn del mapa. 
 	 */
-	private void startGame() {
-		ItemStack sword = new ItemStack(Material.IRON_SWORD);
-		ItemMeta swordIM = sword.getItemMeta();		
-		swordIM.setUnbreakable(true);
-		
+	private void startGame() {		
 		if(game.status != Status.WAITING) return;
 		int minPlayers = plugin.getConfig().getInt("MinPlayers") != 0 ? plugin.getConfig().getInt("MinPlayers") : 4; //Se obtiene numero minimo de jugadores, si no existe, se pone 4 por default
 		int numImpostors = plugin.getConfig().getInt("NumberOfImpostor") != 0 ? plugin.getConfig().getInt("NumberOfImpostor") : 1; //Se obtiene numero de impostores, si no existe, se pone 1 por default
@@ -174,13 +183,15 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			
 			//Se informa a los jugadores el rol que tienen
 			for(i=0; i < game.players.size(); i++) {
-				FKBAmongUsPlayer p = game.players.get(i);
-				p.getPlayer().setGameMode(GameMode.SURVIVAL);
-				if(p.getRole() == PlayerRole.INNOCENT) {
+				FKBAmongUsPlayer p = game.getFKBAmongUsPlayer(game.players.get(i).getPlayer());
+				p.setAlive(true);
+				p.getPlayer().setGameMode(GameMode.SURVIVAL); //se ponen en survival
+				p.getPlayer().getInventory().clear(); //se les limpia el inventario
+				if(p.getRole() == PlayerRole.INNOCENT) { //Si son inocentes
 					game.innocents.add(p);
 					p.getPlayer().sendTitle(ChatColor.BLUE + "Innocent", ChatColor.GRAY + "There are " + ChatColor.RED + numImpostors + " Impostor(s) " + ChatColor.GRAY + " among us", 5, 100, 5);
-				}else {
-					p.getPlayer().getInventory().setItem(1, sword);
+				}else {			//Si son impostores
+					p.getPlayer().getInventory().setItem(1, this.game.impostorItem); //Se les da la espada
 					game.impostors.add(p);
 					p.getPlayer().sendTitle(ChatColor.DARK_RED + "Impostor", ChatColor.GRAY + "Kill them!", 5, 100, 5);
 				}
@@ -189,9 +200,14 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 				p.getPlayer().teleport(loc);
 			}
 			
-			game.status = Status.IN_GAME;
+			for(i=0; i < this.game.recentDead.size(); i++) {
+				this.game.recentDead.get(i).remove();
+			}
+			
+			game.status = Status.IN_GAME; //Se pasa el estado del juego a in-game
 			
 			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.GREEN + "has started.");
+			
 		}catch(Exception e) {
 			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "There is no MeetingRoom to start the game, contact an admin.");
 			plugin.getLogger().info("There is no MeetingRoom to start the game to join FKB Among Us. Configure a lobby please. " + e.getStackTrace());
@@ -201,12 +217,24 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	private void stopGame() {
 		if(game.status != Status.WAITING) {
 			game.status = Status.WAITING;
-			for(int i=0; i < this.game.players.size(); i++) {
-				this.game.players.get(i).getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
-				this.game.players.get(i).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
+			for(FKBAmongUsPlayer p: game.players) {
+				//FKBAmongUsPlayer p = this.game.getFKBAmongUsPlayer(this.game.players.get(i).getPlayer());
+				p.setAlive(false);
+				
+				p.getPlayer().setGameMode(GameMode.SURVIVAL); //se ponen en survival
+				p.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
+				p.getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
 			
 			}
+			
+			for(ArmorStand a:this.game.recentDead) {
+				a.remove();
+			}
+			
 			this.game.players.removeAllElements();
+			this.game.impostors.removeAllElements();
+			this.game.innocents.removeAllElements();
+			this.game.recentDead.removeAllElements();
 			this.game.timeInGame = 0;
 			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "has stopped.");
 		}
@@ -304,19 +332,59 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			try {
 				plugin.getConfig().set("NumberOfImpostor", i);
 				plugin.saveConfig();
-				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Number of impostors established (" + i + ")");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Número de impostores establecido (" + i + ").");
 			}catch(Exception e) {
-				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish number of impostors");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el número de impostores");
 				return false;
 			}
 		}else {
-			sender.sendMessage(this.game.pluginName + ChatColor.RED + "Number of impostors can only be 1, 2 or 3.");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "Numero de impostores tiene que ser 1, 2 o 3.");
 			return false;
 		}
 		
 	return true;
 	}
 	
+	private boolean setMeetingTime(CommandSender sender, int i) {
+		if(i >= 10) {
+			try {
+				plugin.getConfig().set("MeetingTime", i);
+				plugin.saveConfig();
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Tiempo para hablar establecido (" + i + " segundos).");
+			}catch(Exception e) {
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el tiempo para hablar.");
+				return false;
+			}
+		}else {
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "El minimo son 10 segundos");
+			return false;
+		}
+		return true;
+	}
+	
+	private boolean setVotingTime(CommandSender sender, int i) {
+		if(i >= 10) {
+			try {
+				plugin.getConfig().set("VotingTime", i);
+				plugin.saveConfig();
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Tiempo para votar establecido (" + i + " segundos).");
+			}catch(Exception e) {
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el tiempo para votar.");
+				return false;
+			}
+		}else {
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "El minimo son 10 segundos");
+			return false;
+		}
+		return true;
+	}
+	
+	public void printPlayers(CommandSender sender) {
+    	for(int i=0; i < game.players.size();i++) {
+    		FKBAmongUsPlayer p = game.players.get(i);
+    		sender.sendMessage(this.game.pluginName + ChatColor.AQUA  + p.getPlayer().getName() + " §b[" + (p.isImpostor() ?  "§4Impostor" : "§aInnocent") + "§b] [" + (p.isAlive() ? "§aAlive" : "§4Dead") +"§b]");
+    	}
+    } 
 
 	/*=============================================================================================================
 	 * 

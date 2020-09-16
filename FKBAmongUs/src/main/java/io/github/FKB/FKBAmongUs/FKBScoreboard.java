@@ -19,6 +19,7 @@ public class FKBScoreboard {
 	private Score s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10;
 	protected String status;
 	protected String role;
+	protected String countDown;
 	
 	public FKBScoreboard(Main _plugin, String _pluginName) {
 		this.plugin = _plugin;
@@ -26,6 +27,7 @@ public class FKBScoreboard {
 		this.scoreboard = plugin.getServer().getScoreboardManager().getNewScoreboard();
 		this.status = "status";
 		this.role = "role";
+		this.countDown = "--:--";
 		
 		objective = this.scoreboard.registerNewObjective("scoreboard", "dummy", "displayname");
 	    objective.setDisplayName(this.pluginName);
@@ -42,7 +44,7 @@ public class FKBScoreboard {
 	    s5 = objective.getScore(ChatColor.AQUA + "" + ChatColor.ITALIC  + role);
 	    s6 = objective.getScore(ChatColor.AQUA + "" + ChatColor.ITALIC  + "          ");
 	    s7 = objective.getScore(ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "TIME:");
-	    s8 = objective.getScore(ChatColor.AQUA + "--:--");
+	    s8 = objective.getScore(ChatColor.YELLOW + countDown);
 	    s9 = objective.getScore(ChatColor.AQUA + "             ");
 	    s10 = objective.getScore(ChatColor.AQUA + "            ");
 	    
@@ -68,18 +70,24 @@ public class FKBScoreboard {
 		
 		switch(_status) {
 		case WAITING:
-			this.status = "Waiting for players...";
+			this.status = "Esperando jugadores...";
 			s2 = objective.getScore(ChatColor.AQUA + "" + ChatColor.ITALIC + status);
 			s2.setScore(8);
 			break;
 		case IN_GAME:
-			this.status = "In Game";
+			this.status = "En juego";
 			s2 = objective.getScore(ChatColor.AQUA + "" + ChatColor.ITALIC + status);
 			s2.setScore(8);
     		break;
     	case TALKING:
+    		this.status = "Hablando";
+			s2 = objective.getScore(ChatColor.AQUA + "" + ChatColor.ITALIC + status);
+			s2.setScore(8);
     		break;
     	case VOTING:
+    		this.status = "Votando";
+			s2 = objective.getScore(ChatColor.AQUA + "" + ChatColor.ITALIC + status);
+			s2.setScore(8);
     		break;
 		default:
 			break;
@@ -97,6 +105,18 @@ public class FKBScoreboard {
 		this.role = (_role == PlayerRole.IMPOSTOR) ? (ChatColor.DARK_RED + "Impostor") : (ChatColor.GREEN + "Innocent");
 		
 		s5 = objective.getScore(this.role);
-		s5.setScore(5);
+		//s5.setScore(5);
+	}
+	
+	public void setCountDown(String _countDown) {
+		objective.unregister();
+		objective = this.scoreboard.registerNewObjective("scoreboard", "dummy", "displayname");
+		objective.setDisplayName(this.pluginName);
+		objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+		
+		this.countDown = _countDown;
+		s8 = objective.getScore(ChatColor.YELLOW + this.countDown);
+		//s8.setScore(2);
+		
 	}
 }
