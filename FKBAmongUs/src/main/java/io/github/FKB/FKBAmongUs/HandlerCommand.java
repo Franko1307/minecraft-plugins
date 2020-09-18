@@ -76,6 +76,10 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			if(args.length < 2) return false;	
 			setVotingTime(sender, Integer.parseInt(args[1]));
 			break;
+		case "setcooldown":
+			if(args.length < 2) return false;	
+			setCooldown(sender, Integer.parseInt(args[1]));
+			break;
 		case "setlobby":
 			setLobby(sender);
 			break;
@@ -125,7 +129,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	}
 	
 	/*
-	 * PORHACER: funcionalidad para cuando este la partida en curso y se salga.
+	 * TODO: funcionalidad para cuando este la partida en curso y se salga.
 	 * Quita a un jugador de la partida
 	 * */
 	private void playerLeave(CommandSender sender) {
@@ -134,7 +138,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		int aux = isPlayerIn(_player);
 		if(aux != -1) { //Si el jugador está en partida no iniciada:
 			game.getFKBAmongUsPlayer(game.players.get(aux).getPlayer()).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
-			
+			_player.getPlayer().setGameMode(GameMode.SURVIVAL); //se ponen en survival
 			_player.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
 			game.players.remove(aux); //Quita al jugador del arreglo de jugadores.
 			
@@ -220,11 +224,9 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			for(FKBAmongUsPlayer p: game.players) {
 				//FKBAmongUsPlayer p = this.game.getFKBAmongUsPlayer(this.game.players.get(i).getPlayer());
 				p.setAlive(false);
-				
+				p.getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
 				p.getPlayer().setGameMode(GameMode.SURVIVAL); //se ponen en survival
 				p.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
-				p.getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
-			
 			}
 			
 			for(ArmorStand a:this.game.recentDead) {
@@ -374,6 +376,23 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			}
 		}else {
 			sender.sendMessage(this.game.pluginName + ChatColor.RED + "El minimo son 10 segundos");
+			return false;
+		}
+		return true;
+	}
+	
+	private boolean setCooldown(CommandSender sender, int i) {
+		if(i >= 10 || i <= 60) {
+			try {
+				plugin.getConfig().set("Cooldown", i);
+				plugin.saveConfig();
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Tiempo de recarga establecido (" + i + " segundos).");
+			}catch(Exception e) {
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el tiempo de recarga.");
+				return false;
+			}
+		}else {
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "El minimo son 10 segundos y el máximo 60");
 			return false;
 		}
 		return true;

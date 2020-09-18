@@ -1,3 +1,4 @@
+//Â§
 package io.github.FKB.FKBAmongUs;
 
 import java.lang.reflect.Constructor;
@@ -37,6 +38,7 @@ import java.util.HashMap;
 public class Game  implements Listener {
 	public enum Status{WAITING, IN_GAME, TALKING, VOTING;}
 	public String pluginName = ChatColor.AQUA + "[" + ChatColor.DARK_RED + "" + ChatColor.BOLD  + "F" + ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "K" + ChatColor.LIGHT_PURPLE + "" + ChatColor.BOLD + "B" + ChatColor.AQUA + ChatColor.BOLD  + "AmongUs" + ChatColor.AQUA  + "] ";
+	BukkitScheduler scheduler;
 	
 	private Main plugin;
 	public boolean running;
@@ -51,6 +53,7 @@ public class Game  implements Listener {
 	public ItemStack meetingItem;
 	public int meetingTime;
 	public int votingTime;
+	public int cooldown;
 	public Inventory votingInventory;
 	public HashMap<String, Integer> votations;
 	
@@ -67,6 +70,7 @@ public class Game  implements Listener {
 		this.votations = new HashMap<String, Integer>();
 		this.meetingTime = plugin.getConfig().getInt("MeetingTime") != 0 ? plugin.getConfig().getInt("MeetingTime") : 60;
 		this.votingTime = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("VotingTime") : 20;
+		this.cooldown = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("Cooldown") : 30;
 		
 		setGameItems();
 
@@ -84,7 +88,7 @@ public class Game  implements Listener {
 
 		 
 		 //ThreadGame
-		 BukkitScheduler scheduler = plugin.getServer().getScheduler();
+		 this.scheduler = plugin.getServer().getScheduler();
 	        scheduler.scheduleSyncRepeatingTask(this.plugin, new Runnable() {
 	            @Override
 	            public void run() {
@@ -118,11 +122,11 @@ public class Game  implements Listener {
 	}
 
 	private void inGame() {
-		
 		//verifica el cuarto donde se encuentran los jugadores
 		checkPlayersLocations();
 		
 		checkNearbyDeads();
+
 	}
 	
 	private void talking() {
@@ -163,7 +167,7 @@ public class Game  implements Listener {
 		 skipMeta.setDisplayName("Saltar voto");
 		 skip.setItemMeta(skipMeta);
 		 this.votingInventory.setItem(i,skip);
-		 votations.put("skip", 0);
+		 votations.put("Skip", 0);
 		for(FKBAmongUsPlayer p:players) {
 			if(!p.isAlive()) continue;
 			p.getPlayer().openInventory(votingInventory);
@@ -176,51 +180,14 @@ public class Game  implements Listener {
 	} 
 	
 	private void voting() {
-
-		if(votingTime < 0) { //Cuando se acaba el tiempo de la votación
-			FKBAmongUsPlayer eliminated = null;
-			status = Status.IN_GAME;
-			votingTime = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("VotingTime") : 20;
-			for(FKBAmongUsPlayer p:players) {
-				p.getPlayer().closeInventory();
-			}
+		
+		
+		if(votingTime < 0) { //Cuando se acaba el tiempo de la votaciÃ³n
+			votingResults();
 			
-			//Conteo de votos
-			Map.Entry<String, Integer> maxVotes = new AbstractMap.SimpleEntry<String, Integer>("skip", 0);
-			for(Map.Entry<String, Integer>  hp :votations.entrySet()) {
-				if(hp.getValue() > maxVotes.getValue()) {
-					maxVotes = hp;
-				}
-
-				plugin.getServer().broadcastMessage(pluginName +  hp.getKey() + " tiene " + hp.getValue() + " voto(s).");
-			}
-			
-			//busca el jugador que tiene mas votos
-			for(FKBAmongUsPlayer p:players) {
-				if(maxVotes.getKey().equals(p.getPlayer().getName())) {
-					eliminated = p;
-					//elimina al jugador del juego
-					eliminated.getPlayer().setGameMode(GameMode.SPECTATOR);
-					eliminated.setAlive(false);
-		    		break;
-				} 
-			}
-			
-			//avisar a todos a quien sacaron
-			for(FKBAmongUsPlayer p:players) {
-				if(eliminated != null) {
-					p.getPlayer().sendTitle("", ChatColor.WHITE + "" + ChatColor.BOLD + eliminated.getPlayer().getName() + " a sido funado." , 5, 60, 5);
-				}else {
-					p.getPlayer().sendTitle("", "Nadie ha sido funado." , 5, 60, 5);
-				}
-			}
-			
-			votations.clear();
-			//TODO: activar movimiento
 			return;
 		}
-		
-		
+
 		
 		for(FKBAmongUsPlayer p:players) {
 			if(!p.getPlayer().isOnline()) continue;
@@ -231,6 +198,114 @@ public class Game  implements Listener {
 			
 		}
 		votingTime--;
+	}
+	
+	private void votingResults() {
+		Location loc;
+		Vector<ArmorStand> holograms = new Vector<ArmorStand>();
+		FKBAmongUsPlayer eliminated = null;
+		
+		status = Status.IN_GAME;
+		votingTime = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("VotingTime") : 20;
+		for(FKBAmongUsPlayer p:players) {
+			p.getPlayer().closeInventory();
+		}
+		
+		//Conteo de votos
+		Map.Entry<String, Integer> maxVotes = new AbstractMap.SimpleEntry<String, Integer>("Skip", 0);
+		for(Map.Entry<String, Integer>  hp :votations.entrySet()) {
+			if(hp.getValue() > maxVotes.getValue()) {
+				maxVotes = hp;
+			}
+
+			//plugin.getServer().broadcastMessage(pluginName +  hp.getKey() + " tiene " + hp.getValue() + " voto(s).");
+		}
+		
+		loc = plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location");
+		loc.setY(loc.getY() + players.size()*0.3);
+
+		ArmorStand votationTitle = (ArmorStand) players.get(0).getPlayer().getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
+		holograms.add(votationTitle);
+		votationTitle.setGravity(false);
+		votationTitle.setInvulnerable(true);
+		votationTitle.setCanPickupItems(false);
+		votationTitle.setCustomName(ChatColor.GREEN + "--==== VOTACIONES ====--");
+		votationTitle.setCustomNameVisible(true);
+		votationTitle.setVisible(false);
+		
+		loc.setY(loc.getY()-0.3);
+		
+		for(Map.Entry<String, Integer>  hp :votations.entrySet()) {
+			
+			ArmorStand stand = (ArmorStand) players.get(0).getPlayer().getWorld().spawnEntity(loc, EntityType.ARMOR_STAND);
+		
+			String votes = "";
+			for(int j = 0; j < hp.getValue(); j++) {
+				votes = votes + "âš¡ ";
+			}
+			/*for(FKBAmongUsPlayer p:players) {
+				if(p.isAlive()) {
+					votes = votes + "â—» ";
+				}
+			}*/
+			
+			holograms.add(stand);
+			
+			stand.setGravity(false);
+    		stand.setInvulnerable(true);
+    		stand.setCanPickupItems(false);
+    		stand.setCustomName(ChatColor.AQUA + " | " + ChatColor.YELLOW + hp.getKey() + ChatColor.AQUA + " | " + votes + ChatColor.AQUA + " |");
+    		stand.setCustomNameVisible(true);
+    		stand.setVisible(false);
+    		
+    		loc.setY(loc.getY()-0.3);
+		}
+
+		
+		//busca el jugador que tiene mas votos
+		for(FKBAmongUsPlayer p:players) {
+			if(maxVotes.getKey().equals(p.getPlayer().getName())) {
+				eliminated = p;
+				//elimina al jugador del juego
+				
+	    		break;
+			} 
+		}
+		
+		//se usan variables finales porque si no el hilo no las acepta.
+		final FKBAmongUsPlayer eliminated_ = eliminated;
+		final Vector<ArmorStand> holograms_ = holograms;
+		plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable(){
+			
+			public void run(){
+				
+				//avisar a todos a quien sacaron
+				for(FKBAmongUsPlayer p:players) {
+					if(eliminated_ != null) {
+						p.getPlayer().sendTitle("", ChatColor.WHITE + "" + ChatColor.BOLD + eliminated_.getPlayer().getName() + " a sido funado." , 5, 60, 5);
+					}else {
+						p.getPlayer().sendTitle("", "Nadie ha sido funado." , 5, 60, 5);
+					}
+				}
+				
+				if(eliminated_ != null) {
+					eliminated_.getPlayer().setGameMode(GameMode.SPECTATOR);
+					eliminated_.setAlive(false);
+				}
+				
+				for(ArmorStand a:holograms_) {
+					a.remove();
+				}
+				holograms_.removeAllElements();
+				
+				
+			}
+		}, 150L);
+		
+		votations.clear();
+		
+		
+		//TODO: activar movimiento
 	}
 	
 	private void checkPlayersLocations() {
@@ -334,8 +409,8 @@ public class Game  implements Listener {
     	boolean isImpostor = false;
     	boolean isInnocent = true;
     	if(!(event.getEntity() instanceof Player)) return;
-    	Player p2 = (Player) event.getEntity(); //recibe daño
-    	Player p1 = (Player) event.getDamager();  //hace daño
+    	Player p2 = (Player) event.getEntity(); //recibe daÃ±o
+    	Player p1 = (Player) event.getDamager();  //hace daÃ±o
     	
     	plugin.getLogger().info("atacante: " + p1.getName());
     	plugin.getLogger().info("vistima: " + p2.getName());
@@ -376,7 +451,7 @@ public class Game  implements Listener {
     	
     	Block block = event.getBlockPlaced();
     	if(block.getType().equals(meetingItem.getType())) {
-    		plugin.getServer().broadcastMessage(pluginName + event.getPlayer().getName() + " ha convocado una reunión.");
+    		plugin.getServer().broadcastMessage(pluginName + event.getPlayer().getName() + " ha convocado una reuniÃ³n.");
     		status = Status.TALKING;
     		
     		for(FKBAmongUsPlayer p:players) {
@@ -401,12 +476,12 @@ public class Game  implements Listener {
 	    Player clicker = (Player) event.getWhoClicked(); // clickeador
 	    ItemStack clicked = event.getCurrentItem(); // item clickeado
 	    Inventory inventory = event.getInventory(); // inventario que clickeo
-	    if (!inventory.equals(votingInventory)) return; //Si clickeó en votación
+	    if (!inventory.equals(votingInventory)) return; //Si clickeÃ³ en votaciÃ³n
     	
 	    //ItemStack playerHead = clicked;
     	if(clicked.getType() == Material.RED_STAINED_GLASS_PANE) {
-    		votations.replace("skip", votations.get("skip") + 1);
-    		plugin.getLogger().info(clicker.getName() + " saltó su voto.");
+    		votations.replace("Skip", votations.get("Skip") + 1);
+    		plugin.getLogger().info(clicker.getName() + " saltÃ³ su voto.");
     		//event.setCancelled(true); // cancelar el evento
     		clicker.closeInventory(); //cierra el inventario
     		return;
@@ -416,11 +491,11 @@ public class Game  implements Listener {
 
     	for(FKBAmongUsPlayer p:players) {
     		String pName = p.getPlayer().getName();
-    		if (playerHeadMeta.getOwningPlayer().getName().equals(pName)) { // detectar a quien votó
+    		if (playerHeadMeta.getOwningPlayer().getName().equals(pName)) { // detectar a quien votÃ³
 	    		//event.setCancelled(true); // cancelar el evento
     			
     			votations.replace(pName, votations.get(pName) + 1);
-	    		plugin.getLogger().info(clicker.getName() + " votó por " + pName + " [" + votations.get(pName) + "]");
+	    		plugin.getLogger().info(clicker.getName() + " votÃ³ por " + pName + " [" + votations.get(pName) + "]");
 	    		break;
 	    	}
     	}
@@ -441,22 +516,27 @@ public class Game  implements Listener {
     	stand.setGravity(false);
     	stand.setInvulnerable(true);
     	stand.setCanPickupItems(false);
-    	stand.setCustomName(p.getName() + " §4ha sido descuartizado!");
+    	stand.setCustomName(p.getName() + " Â§4ha sido descuartizado!");
     	stand.setCustomNameVisible(true);
     	
-    	recentDead.add(stand);  //se añade la ubicación al arreglo de muertos recientes
+    	recentDead.add(stand);  //se aÃ±ade la ubicaciÃ³n al arreglo de muertos recientes
     }
     
     private void setGameItems() {
     	this.impostorItem = new ItemStack(Material.IRON_SWORD);  //PORHACER: item configurable
 		ItemMeta impostorItemMeta = this.impostorItem.getItemMeta();
 		impostorItemMeta.setUnbreakable(true);
-		impostorItemMeta.setDisplayName("§c§lCuchillo");
+		impostorItemMeta.setDisplayName("Â§cÂ§lCuchillo");
 		impostorItem.setItemMeta(impostorItemMeta);
 		
 		this.meetingItem = new ItemStack(Material.REDSTONE_BLOCK); //PORHACER: item config.
 		ItemMeta meetingItemMeta = this.meetingItem.getItemMeta();
-		meetingItemMeta.setDisplayName("§4§l¡Reportar!");
+		meetingItemMeta.setDisplayName("Â§4Â§lÂ¡Reportar!");
 		meetingItem.setItemMeta(meetingItemMeta);
+    }
+    
+    @EventHandler
+    public void onDisconnectPlayer(InventoryClickEvent event) {
+    
     }
 }

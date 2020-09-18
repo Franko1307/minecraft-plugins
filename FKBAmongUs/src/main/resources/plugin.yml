@@ -30,6 +30,7 @@ permissions:
         FKBAmongUs.setnumberimpostors: false
         FKBAmongUs.setmeetingtime: false
         FKBAmongUs.setvotingtime: false
+        FKBAmongUs.setcooldown: false
     FKBAmongUs.join:
         description: join a match.
         default: true
@@ -62,5 +63,8 @@ permissions:
         default: false
     FKBAmongUs.setvotingtime:
         description: Set time to vote
+        default: false
+    FKBAmongUs.setcooldown:
+        description: Set cooldown
         default: false
         
