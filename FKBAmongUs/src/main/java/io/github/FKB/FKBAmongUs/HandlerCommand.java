@@ -90,6 +90,10 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		case "getplayers":
 			printPlayers(sender);
 			break;
+		case "setsewer":
+			if (args.length < 2) return false;
+			this.game.sewer.setSewers(args[1], ((Player )sender).getLocation());
+			break;
 		default:
 			sender.sendMessage("Error in comand!.");
 			return false;
@@ -105,9 +109,9 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		player.getPlayer().saveData(); //Guarda los datos del jugador que quiere ingresar a partida, esto se usa para que al terminar la partida se regrese al lugar donde estaba
 		if(isPlayerIn(player) == -1) {
 			try {
-				int maxPlayers = plugin.getConfig().getInt("MaxPlayers") != 0 ? plugin.getConfig().getInt("MaxPlayers") : 10; //Se obtiene numero máximo de jugadores, si no existe, se pone 10 por default
+				int maxPlayers = plugin.getConfig().getInt("MaxPlayers") != 0 ? plugin.getConfig().getInt("MaxPlayers") : 10; //Se obtiene numero mï¿½ximo de jugadores, si no existe, se pone 10 por default
 				
-				if(game.players.size() > maxPlayers) { //Si la partida está llena, no meter al jugador.
+				if(game.players.size() > maxPlayers) { //Si la partida estï¿½ llena, no meter al jugador.
 					sender.sendMessage(this.game.pluginName + ChatColor.RED + "The match is full.");
 					return;
 				}
@@ -133,11 +137,11 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	 * Quita a un jugador de la partida
 	 * */
 	private void playerLeave(CommandSender sender) {
-		int maxPlayers = plugin.getConfig().getInt("MaxPlayers") != 0 ? plugin.getConfig().getInt("MaxPlayers") : 10; //Se obtiene numero máximo de jugadores, si no existe, se pone 10 por default
+		int maxPlayers = plugin.getConfig().getInt("MaxPlayers") != 0 ? plugin.getConfig().getInt("MaxPlayers") : 10; //Se obtiene numero mï¿½ximo de jugadores, si no existe, se pone 10 por default
 		FKBAmongUsPlayer _player = new FKBAmongUsPlayer(this.plugin, (Player)sender);
 		int aux = isPlayerIn(_player);
-		if(aux != -1) { //Si el jugador está en partida no iniciada:
-			game.getFKBAmongUsPlayer(game.players.get(aux).getPlayer()).getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
+		if(aux != -1) { //Si el jugador estï¿½ en partida no iniciada:
+			game.getFKBAmongUsPlayer(game.players.get(aux).getPlayer()).getPlayer().loadData(); //Carga la informaciï¿½n que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
 			_player.getPlayer().setGameMode(GameMode.SURVIVAL); //se ponen en survival
 			_player.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
 			game.players.remove(aux); //Quita al jugador del arreglo de jugadores.
@@ -224,7 +228,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			for(FKBAmongUsPlayer p: game.players) {
 				//FKBAmongUsPlayer p = this.game.getFKBAmongUsPlayer(this.game.players.get(i).getPlayer());
 				p.setAlive(false);
-				p.getPlayer().loadData(); //Carga la información que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
+				p.getPlayer().loadData(); //Carga la informaciï¿½n que tenia antes de entrar a la partida. (Lo tepea a donde estaba antes de iniciar)
 				p.getPlayer().setGameMode(GameMode.SURVIVAL); //se ponen en survival
 				p.getPlayer().setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard()); //remover scoreboard
 			}
@@ -243,7 +247,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	}
 	
 	/*
-	 * Se establece el lobby de espera antes de iniciar el juego. Se guarda en config.yml (se guarda el nombre del mundo, coordenadas x,y,z y la dirección a la que mira el jugador) 
+	 * Se establece el lobby de espera antes de iniciar el juego. Se guarda en config.yml (se guarda el nombre del mundo, coordenadas x,y,z y la direcciï¿½n a la que mira el jugador) 
 	 * */
 	private boolean setLobby(CommandSender sender) {
 		Player _player = (Player)sender;
@@ -262,7 +266,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	}
 	
 	/*
-	 * Se establece la sala de reuniones del mapa antes de iniciar el juego. Se guarda en config.yml (se guarda el nombre del mundo, coordenadas x,y,z y la dirección a la que mira el jugador) 
+	 * Se establece la sala de reuniones del mapa antes de iniciar el juego. Se guarda en config.yml (se guarda el nombre del mundo, coordenadas x,y,z y la direcciï¿½n a la que mira el jugador) 
 	 * */
 	private boolean setMapCoords(CommandSender sender, String _roomName, int ratio) {
 		Player _player = (Player)sender;
@@ -334,9 +338,9 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			try {
 				plugin.getConfig().set("NumberOfImpostor", i);
 				plugin.saveConfig();
-				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Número de impostores establecido (" + i + ").");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Nï¿½mero de impostores establecido (" + i + ").");
 			}catch(Exception e) {
-				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el número de impostores");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el nï¿½mero de impostores");
 				return false;
 			}
 		}else {
@@ -392,7 +396,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 				return false;
 			}
 		}else {
-			sender.sendMessage(this.game.pluginName + ChatColor.RED + "El minimo son 10 segundos y el máximo 60");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "El minimo son 10 segundos y el mï¿½ximo 60");
 			return false;
 		}
 		return true;
@@ -401,7 +405,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	public void printPlayers(CommandSender sender) {
     	for(int i=0; i < game.players.size();i++) {
     		FKBAmongUsPlayer p = game.players.get(i);
-    		sender.sendMessage(this.game.pluginName + ChatColor.AQUA  + p.getPlayer().getName() + " §b[" + (p.isImpostor() ?  "§4Impostor" : "§aInnocent") + "§b] [" + (p.isAlive() ? "§aAlive" : "§4Dead") +"§b]");
+    		sender.sendMessage(this.game.pluginName + ChatColor.AQUA  + p.getPlayer().getName() + " ï¿½b[" + (p.isImpostor() ?  "ï¿½4Impostor" : "ï¿½aInnocent") + "ï¿½b] [" + (p.isAlive() ? "ï¿½aAlive" : "ï¿½4Dead") +"ï¿½b]");
     	}
     } 
 

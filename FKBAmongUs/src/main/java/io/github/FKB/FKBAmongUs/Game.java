@@ -10,10 +10,12 @@ import java.util.Vector;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Color;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
@@ -21,17 +23,24 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitScheduler;
+
+import io.github.FKB.FKBAmongUs.utils.Sewer;
 
 import java.util.AbstractMap;
 import java.util.HashMap;
@@ -51,11 +60,18 @@ public class Game  implements Listener {
 	public HandlerCommand handlerCommand;
 	public ItemStack impostorItem;
 	public ItemStack meetingItem;
+	public ItemStack sewersItem;
+	
+	public ItemStack leftItem;
+	public ItemStack rightItem;
+	public ItemStack exitItem;
+	
 	public int meetingTime;
 	public int votingTime;
 	public int cooldown;
 	public Inventory votingInventory;
 	public HashMap<String, Integer> votations;
+	public Sewer sewer;
 	
 	public Game(Main _plugin){
 		this.plugin = _plugin; // Store the plugin in situations where you need it.
@@ -71,6 +87,8 @@ public class Game  implements Listener {
 		this.meetingTime = plugin.getConfig().getInt("MeetingTime") != 0 ? plugin.getConfig().getInt("MeetingTime") : 60;
 		this.votingTime = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("VotingTime") : 20;
 		this.cooldown = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("Cooldown") : 30;
+		
+		sewer = new Sewer(this.plugin);
 		
 		setGameItems();
 
@@ -126,9 +144,13 @@ public class Game  implements Listener {
 		checkPlayersLocations();
 		
 		checkNearbyDeads();
+		
+		checkIfImpostorOnSewers();
 
 	}
 	
+
+
 	private void talking() {
 		if(meetingTime < 0) {
 			status = Status.VOTING;
@@ -335,20 +357,34 @@ public class Game  implements Listener {
 				//plugin.getServer().getLogger().info(player.getPlayer().getName() + " is alive: " + player.isAlive());
 				if(!player.isAlive()) continue;
 				
-				ItemStack item1 = player.getPlayer().getInventory().getItem(3);
+				ItemStack item1 = player.getPlayer().getInventory().getItem(0);
 				if(item1 == null) item1 = air;
 				
 				if(player.getPlayer().getLocation().distance(rd.getLocation()) <= 4) {
 					plugin.getLogger().info("Hay un muerto cerca de " + player.getPlayer().getName());
 					if(item1.equals(meetingItem)) continue;
-					player.getPlayer().getInventory().setItem(3, meetingItem);
+					player.getPlayer().getInventory().setItem(0, meetingItem);
 				}else {
 					if(item1.equals(meetingItem)) {
-						player.getPlayer().getPlayer().getInventory().setItem(3, air);
+						player.getPlayer().getPlayer().getInventory().setItem(0, air);
 					}
 				}
 			}
 		}
+	}
+	
+	private void checkIfImpostorOnSewers() {
+		// TODO Auto-generated method stub
+		
+		for (FKBAmongUsPlayer p:impostors) {
+			if ( p.getPlayer().getLocation().getBlock().getRelative(BlockFace.DOWN).getType() == Material.IRON_TRAPDOOR) {				
+				p.getPlayer().getInventory().setItem(4, sewersItem);
+			}
+				
+			 else 
+				 p.getPlayer().getInventory().setItem(4, new ItemStack(Material.AIR));			
+		}
+		
 	}
 	
 	
@@ -389,6 +425,12 @@ public class Game  implements Listener {
     	return null;
     }
     
+    @EventHandler
+    public void onPlayerMoveEvent(PlayerMoveEvent e) {
+    	FKBAmongUsPlayer FKBPlayer = getFKBAmongUsPlayer(e.getPlayer());
+    	if (FKBPlayer == null) return;
+    	
+    }
     
     @EventHandler
     public void OnDrop(PlayerDropItemEvent event) {
@@ -533,6 +575,85 @@ public class Game  implements Listener {
 		ItemMeta meetingItemMeta = this.meetingItem.getItemMeta();
 		meetingItemMeta.setDisplayName("§4§l¡Reportar!");
 		meetingItem.setItemMeta(meetingItemMeta);
+		
+		this.sewersItem = new ItemStack(Material.IRON_TRAPDOOR); //PORHACER: item config.
+		ItemMeta sewersItemMeta = this.sewersItem.getItemMeta();
+		sewersItemMeta.setDisplayName("§4§l¡Usar Alcantarilla!");
+		this.sewersItem.setItemMeta(sewersItemMeta);
+		
+		this.leftItem = new ItemStack(Material.BLUE_STAINED_GLASS); //PORHACER: item config.
+		ItemMeta leftItemMeta = this.leftItem.getItemMeta();
+		leftItemMeta.setDisplayName("§4§l¡ Izquierda !");
+		this.leftItem.setItemMeta(leftItemMeta);
+		
+		this.rightItem = new ItemStack(Material.GREEN_STAINED_GLASS); //PORHACER: item config.
+		ItemMeta rightItemMeta = this.rightItem.getItemMeta();
+		rightItemMeta.setDisplayName("§4§l¡ Derecha !");
+		this.rightItem.setItemMeta(rightItemMeta);
+		
+		this.exitItem = new ItemStack(Material.RED_STAINED_GLASS); //PORHACER: item config.
+		ItemMeta exitItemMeta = this.exitItem.getItemMeta();
+		exitItemMeta.setDisplayName("§4§l¡ SALIR !");
+		this.exitItem.setItemMeta(exitItemMeta);
+		
+		
+    }
+    @EventHandler
+    public void onPlayerClicks(PlayerInteractEvent event) {
+    	
+    	if (this.status != Status.IN_GAME) return;
+    	
+    	Player player = event.getPlayer();
+        
+    	FKBAmongUsPlayer fkb =  getFKBAmongUsPlayer(player);
+    	
+    	if (!fkb.alive) return;
+    	if (!fkb.isImpostor()) return;
+    		    	
+        Action action = event.getAction();
+        ItemStack item = event.getItem();
+
+         if ( action.equals( Action.RIGHT_CLICK_AIR ) || action.equals( Action.RIGHT_CLICK_BLOCK ) ) {
+             if ( item != null && item.getType().equals(sewersItem.getType()) ) {
+                 player.sendMessage( this.pluginName + ChatColor.RED + "¡ Te has metido en una alcantarilla !" );
+                 for (FKBAmongUsPlayer p : players) {
+                	 p.getPlayer().hidePlayer(this.plugin,player);                	 
+                 }
+                 
+                 player.getInventory().clear();
+                 player.getInventory().setItem(0, leftItem);
+                 player.getInventory().setItem(2, rightItem);
+                 player.getInventory().setItem(1, exitItem);
+                 player.setWalkSpeed(0f);
+                 player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, Integer.MAX_VALUE, 250, false, false, false));
+
+             }
+             if ( item != null && item.getType().equals(leftItem.getType()) ) {
+                 player.sendMessage( this.pluginName + ChatColor.RED + "¡ Izquierda !" );                    
+                 Location loc = sewer.goLeft(player.getLocation());                 
+                 if (loc != null) player.teleport(new Location(loc.getWorld(),loc.getX(),loc.getY(),loc.getZ()));                             
+             } 
+             if ( item != null && item.getType().equals(rightItem.getType()) ) {
+                 player.sendMessage( this.pluginName + ChatColor.RED + "¡ Derecha !" );
+                 Location loc = sewer.goRight(player.getLocation());
+                 
+                 if (loc != null) player.teleport(new Location(loc.getWorld(),loc.getX(),loc.getY(),loc.getZ()));                                 
+             } 
+             if ( item != null && item.getType().equals(exitItem.getType()) ) {
+                 player.sendMessage( this.pluginName + ChatColor.RED + "¡ Saliendo !" );                
+                 
+                 for (FKBAmongUsPlayer p : players) {
+                	 p.getPlayer().showPlayer(this.plugin,player);                	 
+                 }                 
+                 player.getInventory().clear();                 
+                 player.setWalkSpeed(0.2f);
+                 player.removePotionEffect(PotionEffectType.JUMP);
+                 player.getInventory().setItem(1, impostorItem);
+                                 
+             } 
+
+         }
+
     }
     
     @EventHandler

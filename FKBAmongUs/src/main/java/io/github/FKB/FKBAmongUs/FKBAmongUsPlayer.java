@@ -15,6 +15,7 @@ public class FKBAmongUsPlayer{
 	public String room;
 	
 	public FKBScoreboard fkbScoreboard;
+	public boolean inSewer;
 
 	public FKBAmongUsPlayer(Main _plugin, Player _player) {
 		this.player = _player;
@@ -22,7 +23,7 @@ public class FKBAmongUsPlayer{
 		this.alive = true;
 		this.role = PlayerRole.INNOCENT;
 		this.room = "";
-		
+		this.inSewer = false;
 		this.fkbScoreboard = new FKBScoreboard(this.plugin, "    " + pluginName + "    ");
 	}
 	
