@@ -16,6 +16,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
@@ -31,6 +32,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -40,6 +42,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitScheduler;
 
+import io.github.FKB.FKBAmongUs.utils.Room;
 import io.github.FKB.FKBAmongUs.utils.Sewer;
 
 import java.util.AbstractMap;
@@ -55,12 +58,15 @@ public class Game  implements Listener {
 	public Vector<FKBAmongUsPlayer> impostors;
 	public Vector<FKBAmongUsPlayer> innocents;
 	public Vector<ArmorStand> recentDead;
+	public Vector<Room> rooms;
 	public int timeInGame; //segundos
 	public Status status;
 	public HandlerCommand handlerCommand;
 	public ItemStack impostorItem;
 	public ItemStack meetingItem;
+	public ItemStack doorsItem;
 	public ItemStack sewersItem;
+	public ItemStack blockUnderDoor; //Se trata como item, pero es un bloque
 	
 	public ItemStack leftItem;
 	public ItemStack rightItem;
@@ -70,6 +76,7 @@ public class Game  implements Listener {
 	public int votingTime;
 	public int cooldown;
 	public Inventory votingInventory;
+	public Inventory doorsInventory;
 	public HashMap<String, Integer> votations;
 	public Sewer sewer;
 	
@@ -80,6 +87,7 @@ public class Game  implements Listener {
 		this.impostors = new Vector<FKBAmongUsPlayer>();
 		this.innocents = new Vector<FKBAmongUsPlayer>();
 		this.recentDead = new Vector<ArmorStand>();
+		this.rooms = new Vector<Room>();
 		this.running = false;
 		this.status = Status.WAITING;
 		this.handlerCommand = new HandlerCommand(this, this.plugin);
@@ -87,6 +95,9 @@ public class Game  implements Listener {
 		this.meetingTime = plugin.getConfig().getInt("MeetingTime") != 0 ? plugin.getConfig().getInt("MeetingTime") : 60;
 		this.votingTime = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("VotingTime") : 20;
 		this.cooldown = plugin.getConfig().getInt("VotingTime") != 0 ? plugin.getConfig().getInt("Cooldown") : 30;
+		
+		this.blockUnderDoor = new ItemStack(Material.GOLD_BLOCK); //TODO: item config.
+		
 		
 		sewer = new Sewer(this.plugin);
 		
@@ -313,6 +324,7 @@ public class Game  implements Listener {
 				if(eliminated_ != null) {
 					eliminated_.getPlayer().setGameMode(GameMode.SPECTATOR);
 					eliminated_.setAlive(false);
+					eliminated_.getPlayer().getInventory().clear();
 				}
 				
 				for(ArmorStand a:holograms_) {
@@ -333,6 +345,7 @@ public class Game  implements Listener {
 	private void checkPlayersLocations() {
 		for(int i=0; i < players.size(); i++) {
 			FKBAmongUsPlayer _p = players.get(i);
+			if(!_p.getPlayer().isOnline()) return;
 			_p.fkbScoreboard.setStatus(Game.Status.IN_GAME);
 			_p.fkbScoreboard.setCountDown("--:--");
 			_p.getPlayer().setScoreboard(_p.fkbScoreboard.getScoreboard());
@@ -490,23 +503,6 @@ public class Game  implements Listener {
     	if(status == Status.WAITING) return;
     	
     	event.setCancelled(true);
-    	
-    	Block block = event.getBlockPlaced();
-    	if(block.getType().equals(meetingItem.getType())) {
-    		plugin.getServer().broadcastMessage(pluginName + event.getPlayer().getName() + " ha convocado una reunión.");
-    		status = Status.TALKING;
-    		
-    		for(FKBAmongUsPlayer p:players) {
-    			p.getPlayer().getInventory().setItem(3, new ItemStack(Material.AIR)); //quitar item de reportar.
-				//TODO: tepear alrededor de un bloque
-    			p.getPlayer().teleport(plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location"));
-				//TODO: desactivar movimiento
-    		}
-    	}
-    	for(ArmorStand a:recentDead) {
-			a.remove();
-		}
-    	recentDead.removeAllElements();
     }
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
@@ -518,29 +514,95 @@ public class Game  implements Listener {
 	    Player clicker = (Player) event.getWhoClicked(); // clickeador
 	    ItemStack clicked = event.getCurrentItem(); // item clickeado
 	    Inventory inventory = event.getInventory(); // inventario que clickeo
-	    if (!inventory.equals(votingInventory)) return; //Si clickeó en votación
+	    
+	    if(clicked == null) return;
+	    
+	    if (inventory.equals(votingInventory)) { //Si clickeó en votación
     	
-	    //ItemStack playerHead = clicked;
-    	if(clicked.getType() == Material.RED_STAINED_GLASS_PANE) {
-    		votations.replace("Skip", votations.get("Skip") + 1);
-    		plugin.getLogger().info(clicker.getName() + " saltó su voto.");
-    		//event.setCancelled(true); // cancelar el evento
-    		clicker.closeInventory(); //cierra el inventario
-    		return;
-    	}
-    	
-    	SkullMeta playerHeadMeta = (SkullMeta) clicked.getItemMeta();
-
-    	for(FKBAmongUsPlayer p:players) {
-    		String pName = p.getPlayer().getName();
-    		if (playerHeadMeta.getOwningPlayer().getName().equals(pName)) { // detectar a quien votó
+		    //ItemStack playerHead = clicked;
+	    	if(clicked.getType() == Material.RED_STAINED_GLASS_PANE) {
+	    		votations.replace("Skip", votations.get("Skip") + 1);
+	    		plugin.getLogger().info(clicker.getName() + " saltó su voto.");
 	    		//event.setCancelled(true); // cancelar el evento
-    			
-    			votations.replace(pName, votations.get(pName) + 1);
-	    		plugin.getLogger().info(clicker.getName() + " votó por " + pName + " [" + votations.get(pName) + "]");
-	    		break;
+	    		clicker.closeInventory(); //cierra el inventario
+	    		return;
 	    	}
-    	}
+	    	
+	    	SkullMeta playerHeadMeta = (SkullMeta) clicked.getItemMeta();
+	
+	    	for(FKBAmongUsPlayer p:players) {
+	    		String pName = p.getPlayer().getName();
+	    		if (playerHeadMeta.getOwningPlayer().getName().equals(pName)) { // detectar a quien votó
+		    		//event.setCancelled(true); // cancelar el evento
+	    			
+	    			votations.replace(pName, votations.get(pName) + 1);
+		    		plugin.getLogger().info(clicker.getName() + " votó por " + pName + " [" + votations.get(pName) + "]");
+		    		break;
+		    	}
+	    	}
+	    }
+	    
+	    if(inventory.equals(doorsInventory)) {
+	    	ItemMeta itemMetaClicked = (ItemMeta) clicked.getItemMeta();
+	    	for(Room r:rooms) {
+	    		if(itemMetaClicked.getDisplayName().contains(r.name)){
+	    			plugin.getLogger().info(clicker.getName() + " cerró " + itemMetaClicked.getDisplayName());
+	    			double x1 = r.location1.getX();
+	    			double x2 = r.location2.getX();
+	    			double z1 = r.location1.getZ();
+	    			double z2 = r.location2.getZ();
+	    			
+	    			int desdeX;
+	    			int hastaX;
+	    			int desdeZ;
+	    			int hastaZ;
+	    			
+	    			if(x1 < x2) {
+	    				desdeX = (int)x1;
+	    				hastaX = (int)x2;  
+	    			}else {
+	    				desdeX = (int)x2;
+	    				hastaX = (int)x1; 
+	    			}
+	    			
+	    			if(z1 < z2) {
+	    				desdeZ = (int)z1;
+	    				hastaZ = (int)z2;  
+	    			}else {
+	    				desdeZ = (int)z2;
+	    				hastaZ = (int)z1; 
+	    			}
+	    			
+	    			Vector<Block> temporalBlocks = new Vector<Block> ();
+	    		    for (int x = desdeX; x < hastaX ; x++) {
+    		            for (int z = desdeZ ; z < hastaZ ; z++) {
+    		            	Block getBlock = clicker.getWorld().getHighestBlockAt(x, z);
+    		            	//plugin.getServer().getLogger().info(getBlock.getType() + "==" + blockUnderDoor.getType());
+    		            	if(getBlock.getType() == blockUnderDoor.getType()) {     
+    		            		for(int i=1; i<3; i++) {
+    		            			Block b = clicker.getWorld().getBlockAt(x, getBlock.getY()+i, z);
+        		            		b.setType(Material.IRON_BLOCK);
+        		            		temporalBlocks.add(b);
+    		            		}
+    		            	}
+    		            }
+	    		    }
+	    		    //----- se abren las puertas 10 segundos despues
+	    		    final Vector<Block> _temporalBlocks = temporalBlocks;
+	    		    plugin.getServer().getScheduler().scheduleSyncDelayedTask(this.plugin, new Runnable(){
+	    				
+	    				public void run(){
+	    					for(Block b:_temporalBlocks) {
+	    						b.setType(Material.AIR);
+	    					}
+	    				}
+	    			}, 180L); //9 seg
+	    			
+	    			break;
+	    		}
+	    	}
+	    }
+	    
     	clicker.closeInventory(); //cierra el inventario
 	    
     }
@@ -565,33 +627,38 @@ public class Game  implements Listener {
     }
     
     private void setGameItems() {
-    	this.impostorItem = new ItemStack(Material.IRON_SWORD);  //PORHACER: item configurable
+    	this.impostorItem = new ItemStack(Material.IRON_SWORD);  //TODO: item configurable
 		ItemMeta impostorItemMeta = this.impostorItem.getItemMeta();
 		impostorItemMeta.setUnbreakable(true);
 		impostorItemMeta.setDisplayName("§c§lCuchillo");
 		impostorItem.setItemMeta(impostorItemMeta);
 		
-		this.meetingItem = new ItemStack(Material.REDSTONE_BLOCK); //PORHACER: item config.
+		this.meetingItem = new ItemStack(Material.REDSTONE_BLOCK); //TODO: item config.
 		ItemMeta meetingItemMeta = this.meetingItem.getItemMeta();
 		meetingItemMeta.setDisplayName("§4§l¡Reportar!");
 		meetingItem.setItemMeta(meetingItemMeta);
 		
-		this.sewersItem = new ItemStack(Material.IRON_TRAPDOOR); //PORHACER: item config.
+		this.doorsItem = new ItemStack(Material.IRON_DOOR); //TODO: item config.
+		ItemMeta doorsItemMeta = this.doorsItem.getItemMeta();
+		doorsItemMeta.setDisplayName("§7§lCerrar puertas");
+		doorsItem.setItemMeta(doorsItemMeta);
+		
+		this.sewersItem = new ItemStack(Material.IRON_TRAPDOOR); //TODO: item config.
 		ItemMeta sewersItemMeta = this.sewersItem.getItemMeta();
 		sewersItemMeta.setDisplayName("§4§l¡Usar Alcantarilla!");
 		this.sewersItem.setItemMeta(sewersItemMeta);
 		
-		this.leftItem = new ItemStack(Material.BLUE_STAINED_GLASS); //PORHACER: item config.
+		this.leftItem = new ItemStack(Material.BLUE_STAINED_GLASS); //TODO: item config.
 		ItemMeta leftItemMeta = this.leftItem.getItemMeta();
 		leftItemMeta.setDisplayName("§4§l¡ Izquierda !");
 		this.leftItem.setItemMeta(leftItemMeta);
 		
-		this.rightItem = new ItemStack(Material.GREEN_STAINED_GLASS); //PORHACER: item config.
+		this.rightItem = new ItemStack(Material.GREEN_STAINED_GLASS); //TODO: item config.
 		ItemMeta rightItemMeta = this.rightItem.getItemMeta();
 		rightItemMeta.setDisplayName("§4§l¡ Derecha !");
 		this.rightItem.setItemMeta(rightItemMeta);
 		
-		this.exitItem = new ItemStack(Material.RED_STAINED_GLASS); //PORHACER: item config.
+		this.exitItem = new ItemStack(Material.RED_STAINED_GLASS); //TODO: item config.
 		ItemMeta exitItemMeta = this.exitItem.getItemMeta();
 		exitItemMeta.setDisplayName("§4§l¡ SALIR !");
 		this.exitItem.setItemMeta(exitItemMeta);
@@ -650,14 +717,92 @@ public class Game  implements Listener {
                  player.removePotionEffect(PotionEffectType.JUMP);
                  player.getInventory().setItem(1, impostorItem);
                                  
-             } 
+             }
+             //Reportar muerto
+         	 if(item != null && item.getType().equals(meetingItem.getType())) {
+         		 goToMeeting(event.getPlayer().getName());
+         		 
+         	}
+             
+             //Ponición de puertas
+             if( item != null && item.getType().equals(doorsItem.getType())) {
+            	 closeDoors(player);
+             }
 
          }
 
     }
     
-    @EventHandler
-    public void onDisconnectPlayer(InventoryClickEvent event) {
+    public void goToMeeting(String playerName) {
+    	plugin.getServer().broadcastMessage(pluginName + playerName + " ha convocado una reunión.");
+		 status = Status.TALKING;
+		
+		for(FKBAmongUsPlayer p:players) {
+			p.getPlayer().getInventory().setItem(3, new ItemStack(Material.AIR)); //quitar item de reportar.
+			//TODO: tepear alrededor de un bloque
+			p.getPlayer().teleport(plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location"));
+			//TODO: desactivar movimiento
+		}
+		
+		for(ArmorStand a:recentDead) {
+ 			a.remove();
+ 		}
+     	recentDead.removeAllElements();
+    }
     
+    public void closeDoors(Player player) {
+    	int size;
+    	size = rooms.size() > 9 ? 18 : 9;
+    	size = rooms.size() > 18 ? 27 : 9;
+    	
+        this.doorsInventory = Bukkit.createInventory(null, size, "Selecciona habitación");
+        int i=0;
+        for(Room room:rooms) {
+        	ItemStack itemDoor = new ItemStack(doorsItem);
+        	ItemMeta itemDoorMeta = (ItemMeta) itemDoor.getItemMeta();
+        	itemDoorMeta.setDisplayName(ChatColor.GRAY + room.name);
+        	itemDoor.setItemMeta(itemDoorMeta);
+        	
+        	this.doorsInventory.setItem(i, itemDoor);
+    		i++;
+        }
+        
+        player.openInventory(doorsInventory);
+        
+        //de aquí se va a onInventoryClick()
+    	
+    }
+    
+    public void getGameRooms(){
+    	String name;
+        
+    	Set<String> list = plugin.getConfig().getConfigurationSection("map.world.rooms").getKeys(false);
+        for(int i=0; i <list.toArray().length; i++) {
+        	name = list.toArray()[i].toString();
+        	Location location = plugin.getConfig().getLocation("map.world.rooms." + name + ".location");
+        	int ratio = plugin.getConfig().getInt("map.world.rooms." + name + ".r") + 1;
+            Location loc1 = new Location(null, location.getX() - ratio, location.getY(), location.getZ() - ratio);
+            Location loc2 = new Location(null, location.getX() + ratio, location.getY(), location.getZ() + ratio); 
+        	Room room = new Room(name, loc1, loc2);
+        	plugin.getServer().getLogger().info("" + room.name + " " + room.location1.getX() + " " + room.location1.getZ());
+        	this.rooms.add(room);        	
+        }
+    }
+    
+    @EventHandler
+    public void onPlayerLeave(PlayerQuitEvent e){
+    	if (this.status == Status.WAITING) return;
+	    Player player = e.getPlayer();
+	    if(player != null){
+	    	FKBAmongUsPlayer fkbp = getFKBAmongUsPlayer(player);
+	    	if (fkbp == null) return;
+	    	players.remove(fkbp);
+	    	if(fkbp.isImpostor()) impostors.remove(fkbp);
+	    	else innocents.remove(fkbp);
+	    	
+	    	fkbp.getPlayer().getInventory().clear();
+	    	fkbp.getPlayer().setGameMode(GameMode.SPECTATOR);
+	        fkbp.alive = false;
+	    } 
     }
 }

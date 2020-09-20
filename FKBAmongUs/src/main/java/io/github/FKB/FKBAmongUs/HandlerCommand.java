@@ -177,6 +177,8 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		}
 		
 		try {
+			game.getGameRooms(); //Carga la lista de cuartos
+			
 			//plugin.innocents = plugin.players; //Se copian todos los jugadores al arreglo de inocentes
 			int i = 0;
 			while(i < numImpostors) { //elegir n veces impostor
@@ -200,6 +202,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 					p.getPlayer().sendTitle(ChatColor.BLUE + "Innocent", ChatColor.GRAY + "There are " + ChatColor.RED + numImpostors + " Impostor(s) " + ChatColor.GRAY + " among us", 5, 100, 5);
 				}else {			//Si son impostores
 					p.getPlayer().getInventory().setItem(1, this.game.impostorItem); //Se les da la espada
+					p.getPlayer().getInventory().setItem(7, this.game.doorsItem); //Se les da la espada
 					game.impostors.add(p);
 					p.getPlayer().sendTitle(ChatColor.DARK_RED + "Impostor", ChatColor.GRAY + "Kill them!", 5, 100, 5);
 				}
@@ -241,6 +244,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			this.game.impostors.removeAllElements();
 			this.game.innocents.removeAllElements();
 			this.game.recentDead.removeAllElements();
+			this.game.rooms.removeAllElements();
 			this.game.timeInGame = 0;
 			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "has stopped.");
 		}
