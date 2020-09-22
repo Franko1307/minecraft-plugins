@@ -31,6 +31,7 @@ permissions:
         FKBAmongUs.setmeetingtime: false
         FKBAmongUs.setvotingtime: false
         FKBAmongUs.setcooldown: false
+        FKBAmongUs.setsite: false
     FKBAmongUs.join:
         description: join a match.
         default: true
@@ -66,5 +67,8 @@ permissions:
         default: false
     FKBAmongUs.setcooldown:
         description: Set cooldown
+        default: false
+    FKBAmongUs.setsite:
+        description: Set meeting room site for tp players
         default: false
         

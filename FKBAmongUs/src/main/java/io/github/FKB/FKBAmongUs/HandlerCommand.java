@@ -1,4 +1,6 @@
 package io.github.FKB.FKBAmongUs;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Bukkit;
@@ -94,6 +96,9 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			if (args.length < 2) return false;
 			this.game.sewer.setSewers(args[1], ((Player )sender).getLocation());
 			break;
+		case "setsite":
+			setSite(sender);
+			break;
 		default:
 			sender.sendMessage("Error in comand!.");
 			return false;
@@ -166,18 +171,27 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 	/*
 	 * Empieza el juego, seleccionando impostores y los tepea al spawn del mapa. 
 	 */
+	
+	@SuppressWarnings("unchecked")
 	private void startGame() {		
 		if(game.status != Status.WAITING) return;
 		int minPlayers = plugin.getConfig().getInt("MinPlayers") != 0 ? plugin.getConfig().getInt("MinPlayers") : 4; //Se obtiene numero minimo de jugadores, si no existe, se pone 4 por default
 		int numImpostors = plugin.getConfig().getInt("NumberOfImpostor") != 0 ? plugin.getConfig().getInt("NumberOfImpostor") : 1; //Se obtiene numero de impostores, si no existe, se pone 1 por default
 		
 		if(game.players.size() < minPlayers) { //No empieza si no hay minimo de jugadores
-			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "Not enough players for start the game. Are needed at least " + minPlayers + " players.");
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "No hay suficientes jugadores para empezar el juego. Se necesitan al menos " + minPlayers + " jugadores.");
+			return;
+		}
+		
+		game.meetingRoomSites = (List<Location>) this.plugin.getConfig().getList("map.world.rooms.MeetingRoom.sites");
+		if(game.meetingRoomSites == null || game.players.size() > game.meetingRoomSites.size()) { //no empieza si no hay lugares suficientes a donde tepear
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "No se han establecido los sitios donde tepear a los jugadores. Favor de configurarlos.");
 			return;
 		}
 		
 		try {
 			game.getGameRooms(); //Carga la lista de cuartos
+			
 			
 			//plugin.innocents = plugin.players; //Se copian todos los jugadores al arreglo de inocentes
 			int i = 0;
@@ -192,22 +206,29 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			}
 			
 			//Se informa a los jugadores el rol que tienen
-			for(i=0; i < game.players.size(); i++) {
-				FKBAmongUsPlayer p = game.getFKBAmongUsPlayer(game.players.get(i).getPlayer());
+			i=0;
+			for(FKBAmongUsPlayer p:game.players) {
+				//FKBAmongUsPlayer p = game.getFKBAmongUsPlayer(game.players.get(i).getPlayer());
 				p.setAlive(true);
 				p.getPlayer().setGameMode(GameMode.SURVIVAL); //se ponen en survival
 				p.getPlayer().getInventory().clear(); //se les limpia el inventario
 				if(p.getRole() == PlayerRole.INNOCENT) { //Si son inocentes
 					game.innocents.add(p);
-					p.getPlayer().sendTitle(ChatColor.BLUE + "Innocent", ChatColor.GRAY + "There are " + ChatColor.RED + numImpostors + " Impostor(s) " + ChatColor.GRAY + " among us", 5, 100, 5);
+					p.getPlayer().sendTitle(ChatColor.BLUE + "Eres Inocente", ChatColor.GRAY + "Hay " + ChatColor.RED + numImpostors + " Impostor(es) " + ChatColor.GRAY + " entre nosotros!", 5, 100, 5);
 				}else {			//Si son impostores
 					p.getPlayer().getInventory().setItem(1, this.game.impostorItem); //Se les da la espada
 					p.getPlayer().getInventory().setItem(7, this.game.doorsItem); //Se les da la espada
 					game.impostors.add(p);
-					p.getPlayer().sendTitle(ChatColor.DARK_RED + "Impostor", ChatColor.GRAY + "Kill them!", 5, 100, 5);
+					p.getPlayer().sendTitle(ChatColor.DARK_RED + "Impostor", ChatColor.GRAY + "Mata a los inocentes!", 5, 100, 5);
 				}
 				//Se obtiene el mundo y las coordenadas del lobby
-				Location loc = plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location");
+				Location loc;
+				if(game.meetingRoomSites == null) {
+					loc = plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location");
+				}else {
+					loc = game.meetingRoomSites.get(i);
+					i++;
+				}
 				p.getPlayer().teleport(loc);
 			}
 			
@@ -217,11 +238,10 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			
 			game.status = Status.IN_GAME; //Se pasa el estado del juego a in-game
 			
-			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.GREEN + "has started.");
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.GREEN + "El juego ha empezado.");
 			
 		}catch(Exception e) {
-			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "There is no MeetingRoom to start the game, contact an admin.");
-			plugin.getLogger().info("There is no MeetingRoom to start the game to join FKB Among Us. Configure a lobby please. " + e.getStackTrace());
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "Algo salió mal en la configuración, contacta a un admin.");
 		}
 	}
 	
@@ -246,7 +266,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			this.game.recentDead.removeAllElements();
 			this.game.rooms.removeAllElements();
 			this.game.timeInGame = 0;
-			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "has stopped.");
+			plugin.getServer().broadcastMessage(this.game.pluginName + ChatColor.RED + "El juego ha sido detenido.");
 		}
 	}
 	
@@ -261,10 +281,10 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			plugin.getConfig().set("map.world.lobby.location", loc);
 
 	        plugin.saveConfig();
-	        sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Established lobby in world: " + loc.getWorld().getName() + "(" + loc.getX() + ", " + loc.getY() +", " + loc.getZ() + ").");
+	        sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Lobby establecido en: " + loc.getWorld().getName() + "(" + (int)loc.getX() + ", " + (int)loc.getY() +", " + (int)loc.getZ() + ").");
 	        return true;
 		}catch(Exception e) {
-			sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish lobby");
+			sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el lobby");
 			return false;
 		}
 	}
@@ -283,7 +303,7 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			plugin.getConfig().set("map.world.rooms." + _roomName + ".location", loc);
 						
 	        plugin.saveConfig();
-	        sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Established " + _roomName +" in world: " + loc.getWorld().getName() + "(" + loc.getX() + ", " + loc.getY() +", " + loc.getZ() + ").");
+	        sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Established " + _roomName +" in world: " + loc.getWorld().getName() + "(" + (int)loc.getX() + ", " + (int)loc.getY() +", " + (int)loc.getZ() + ").");
 	        return true;
 		}catch(Exception e) {
 			sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish " + _roomName);
@@ -321,13 +341,13 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 			try {
 				plugin.getConfig().set("MinPlayers", i);
 				plugin.saveConfig();
-				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Minimum number of players set (" + i + ")");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Minimo de jugadores establecido (" + i + ")");
 			}catch(Exception e) {
-				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "Could not establish Minimum number of players");
+				sender.sendMessage(this.game.pluginName + ChatColor.GREEN  + "No se pudo establecer el número de jugadores");
 				return false;
 			}
 		}else {
-			sender.sendMessage(this.game.pluginName + ChatColor.RED + "Minimum number of players must be at least 4");
+			sender.sendMessage(this.game.pluginName + ChatColor.RED + "El minimo de jugadores debe de ser 4");
 			return false;
 		}
 		return true;
@@ -405,14 +425,26 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		}
 		return true;
 	}
-	
-	public void printPlayers(CommandSender sender) {
-    	for(int i=0; i < game.players.size();i++) {
-    		FKBAmongUsPlayer p = game.players.get(i);
-    		sender.sendMessage(this.game.pluginName + ChatColor.AQUA  + p.getPlayer().getName() + " �b[" + (p.isImpostor() ?  "�4Impostor" : "�aInnocent") + "�b] [" + (p.isAlive() ? "�aAlive" : "�4Dead") +"�b]");
-    	}
-    } 
 
+	private boolean setSite(CommandSender sender) {
+		Location loc = ((Player )sender).getLocation();
+		
+		@SuppressWarnings("unchecked")
+		List<Location> currentSites = (List<Location>) this.plugin.getConfig().getList("map.world.rooms.MeetingRoom.sites");
+		
+		if (currentSites == null) {
+			currentSites = new ArrayList<Location>();
+		}
+		
+		currentSites.add(loc);
+		
+		this.plugin.getConfig().set("map.world.rooms.MeetingRoom.sites", currentSites);
+		this.plugin.saveConfig();
+		
+		sender.sendMessage(this.game.pluginName + ChatColor.GREEN + "Sitio establecido en: " + loc.getWorld().getName() + "(" + (int)loc.getX() + ", " + (int)loc.getY() +", " + (int)loc.getZ() + ").");
+		
+		return true;
+	}
 	/*=============================================================================================================
 	 * 
 	 * 								FUNCIONES AUXILIARES
@@ -426,4 +458,10 @@ public class HandlerCommand /*extends BukkitRunnable*/ implements CommandExecuto
 		}
 		return -1;
 	}
+	public void printPlayers(CommandSender sender) {
+    	for(int i=0; i < game.players.size();i++) {
+    		FKBAmongUsPlayer p = game.players.get(i);
+    		sender.sendMessage(this.game.pluginName + ChatColor.AQUA  + p.getPlayer().getName() + " �b[" + (p.isImpostor() ?  "�4Impostor" : "�aInnocent") + "�b] [" + (p.isAlive() ? "�aAlive" : "�4Dead") +"�b]");
+    	}
+    } 
 }

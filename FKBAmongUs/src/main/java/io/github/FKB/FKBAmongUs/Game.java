@@ -46,6 +46,7 @@ import io.github.FKB.FKBAmongUs.utils.Room;
 import io.github.FKB.FKBAmongUs.utils.Sewer;
 
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.HashMap;
 public class Game  implements Listener {
 	public enum Status{WAITING, IN_GAME, TALKING, VOTING;}
@@ -59,6 +60,7 @@ public class Game  implements Listener {
 	public Vector<FKBAmongUsPlayer> innocents;
 	public Vector<ArmorStand> recentDead;
 	public Vector<Room> rooms;
+	public List<Location> meetingRoomSites; //Sitios de meetingRoom
 	public int timeInGame; //segundos
 	public Status status;
 	public HandlerCommand handlerCommand;
@@ -87,6 +89,7 @@ public class Game  implements Listener {
 		this.impostors = new Vector<FKBAmongUsPlayer>();
 		this.innocents = new Vector<FKBAmongUsPlayer>();
 		this.recentDead = new Vector<ArmorStand>();
+		this.meetingRoomSites = new ArrayList<Location>();
 		this.rooms = new Vector<Room>();
 		this.running = false;
 		this.status = Status.WAITING;
@@ -443,6 +446,20 @@ public class Game  implements Listener {
     	FKBAmongUsPlayer FKBPlayer = getFKBAmongUsPlayer(e.getPlayer());
     	if (FKBPlayer == null) return;
     	
+    	if(this.status == Status.TALKING || this.status == Status.VOTING) {
+    		Location from = e.getFrom();
+            double xfrom = e.getFrom().getX();
+            double yfrom = e.getFrom().getY();
+            double zfrom = e.getFrom().getZ();
+            double xto = e.getTo().getX();
+            double yto = e.getTo().getY();
+            double zto = e.getTo().getZ();
+            if (!(xfrom == xto && yfrom == yto && zfrom == zto)) {
+            	FKBPlayer.getPlayer().teleport(from);
+            }
+    	}
+    		
+    	
     }
     
     @EventHandler
@@ -736,11 +753,17 @@ public class Game  implements Listener {
     public void goToMeeting(String playerName) {
     	plugin.getServer().broadcastMessage(pluginName + playerName + " ha convocado una reunión.");
 		 status = Status.TALKING;
-		
+		int i =0;
 		for(FKBAmongUsPlayer p:players) {
 			p.getPlayer().getInventory().setItem(3, new ItemStack(Material.AIR)); //quitar item de reportar.
-			//TODO: tepear alrededor de un bloque
-			p.getPlayer().teleport(plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location"));
+			Location loc;
+			if(meetingRoomSites == null) {
+				loc = plugin.getConfig().getLocation("map.world.rooms.MeetingRoom.location");
+			}else {
+				loc = meetingRoomSites.get(i);
+				i++;
+			}
+			p.getPlayer().teleport(loc);
 			//TODO: desactivar movimiento
 		}
 		
