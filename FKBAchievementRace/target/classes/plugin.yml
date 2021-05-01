@@ -1,0 +1,19 @@
+name: FKBAchievementRace
+main: io.github.JoseGurrola.FKBAchievementRace.Main
+version: 1.0
+commands:
+   hi:
+      description: This is a demo command.
+      usage: /hi
+      permission: AchievementRace.hi
+      permission-message: You don't have <permission>
+   AchievementRace:
+      description: This is a handler command for the event.
+      usage: /AchievementRace <start/stop> <time> <duration>
+      permission: AchievementRace.AchievementRace
+      permission-message: You don't have <permission>
+      
+permissions:
+    FKBAchievementRace.*:
+        description: say hi
+        default: op
